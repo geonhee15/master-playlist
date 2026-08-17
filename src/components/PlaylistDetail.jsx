@@ -103,20 +103,7 @@ export default function PlaylistDetail({ playlist, onBack }) {
     [],
   )
 
-  // 스페이스바 = 재생/일시정지 (입력창 타이핑 중이거나 커스텀 섹션이 이미 처리한 경우 제외)
-  useEffect(() => {
-    if (currentIndex < 0) return
-    const onKey = (e) => {
-      if ((e.code !== 'Space' && e.key !== ' ') || e.defaultPrevented) return
-      const t = e.target
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable))
-        return
-      e.preventDefault()
-      controllerRef.current?.togglePlay?.()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [currentIndex])
+  // 스페이스바 처리는 App의 전역 핸들러가 nowPlaying 스토어를 통해 담당
 
   const ensureController = (uri) => {
     if (!controllerPromise.current) {
@@ -198,6 +185,9 @@ export default function PlaylistDetail({ playlist, onBack }) {
         toggle: () => controllerRef.current?.togglePlay?.(),
         stop: () => {
           if (getNowPlaying()?.isPlaying) controllerRef.current?.togglePlay?.()
+        },
+        pause: () => {
+          if (!lastUpdate.current.paused) controllerRef.current?.togglePlay?.()
         },
       },
     })

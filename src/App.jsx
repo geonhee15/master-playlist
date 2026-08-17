@@ -11,6 +11,7 @@ import ConsentBanner from './components/ConsentBanner.jsx'
 import DashboardSection from './components/DashboardSection.jsx'
 import { exchangeCode } from './spotify.js'
 import { recordSectionVisit } from './stats.js'
+import { getNowPlaying } from './nowPlaying.js'
 
 export default function App() {
   const [section, setSection] = useState('spotify')
@@ -52,6 +53,26 @@ export default function App() {
   useEffect(() => {
     recordSectionVisit(section)
   }, [section])
+
+  // 스페이스바 = 지금 재생 중인 것(미니바가 가리키는 소스) 재생/일시정지.
+  // 입력창 타이핑 중엔 무시, preventDefault로 스크롤·포커스된 버튼 눌림 방지.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.code !== 'Space' && e.key !== ' ') || e.defaultPrevented) return
+      const t = e.target
+      if (
+        t &&
+        (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)
+      )
+        return
+      const nowPlaying = getNowPlaying()
+      if (!nowPlaying?.controls?.toggle) return
+      e.preventDefault()
+      nowPlaying.controls.toggle()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   if (booting) {
     return (

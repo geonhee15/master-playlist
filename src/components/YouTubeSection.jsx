@@ -89,6 +89,9 @@ function YtPlaylistDetail({ playlist, onBack }) {
   const lastIdxRef = useRef(-1)
   const itemsRef = useRef(null)
   itemsRef.current = items
+  const advanceRef = useRef(null) // 영상이 끝나면 다음으로 (이벤트 리스너용 최신 로직)
+  const skipRef = useRef(null) // 재생 불가 영상 건너뛰기
+  const errorRunRef = useRef(0)
 
   useEffect(() => {
     getPlaylistItems(playlist.id)
@@ -113,9 +116,19 @@ function YtPlaylistDetail({ playlist, onBack }) {
                   resolve(p)
                 },
                 onStateChange: (e) => {
-                  if (getNowPlaying()?.source !== 'youtube') return
-                  if (e.data === 1) updateNowPlaying({ isPlaying: true })
-                  else if (e.data === 2 || e.data === 0) updateNowPlaying({ isPlaying: false })
+                  if (e.data === 1) {
+                    errorRunRef.current = 0
+                    if (getNowPlaying()?.source === 'youtube') updateNowPlaying({ isPlaying: true })
+                  } else if (e.data === 2) {
+                    if (getNowPlaying()?.source === 'youtube') updateNowPlaying({ isPlaying: false })
+                  } else if (e.data === 0) {
+                    // 영상 종료 → 우리가 직접 다음 영상으로 (전체 반복 포함)
+                    advanceRef.current?.()
+                  }
+                },
+                onError: () => {
+                  // 임베드 차단/삭제된 영상 → 자동으로 다음 영상 건너뛰기
+                  skipRef.current?.()
                 },
               },
             })
@@ -154,40 +167,35 @@ function YtPlaylistDetail({ playlist, onBack }) {
     })
   }
 
+  // 유튜브 플리 대기열(loadPlaylist)은 200개 제한 + 삭제된 영상 때문에 인덱스가 어긋나는
+  // 문제가 있어, 영상 ID로 직접 재생하고 다음 곡 진행도 우리가 관리한다.
   const playIndex = async (index) => {
-    setCurrentIndex(index)
+    const item = itemsRef.current?.[index]
+    const videoId = item?.contentDetails?.videoId || item?.snippet?.resourceId?.videoId
+    if (!videoId) return
     lastIdxRef.current = index
-    publishNowPlaying(items?.[index])
+    setCurrentIndex(index)
+    publishNowPlaying(item)
     const player = await ensurePlayer()
-    player.loadPlaylist({ listType: 'playlist', list: playlist.id, index })
-    player.setLoop(true) // 마지막 영상이 끝나면 처음부터
+    player.loadVideoById(videoId)
   }
 
-  // 유튜브 플레이어가 자동으로 다음 영상으로 넘어가므로, 현재 인덱스를 폴링해서
-  // 하이라이트·Now playing 정보를 갱신한다
-  useEffect(() => {
-    const id = setInterval(() => {
-      const p = playerRef.current
-      if (!p?.getPlaylistIndex) return
-      const i = p.getPlaylistIndex()
-      if (typeof i !== 'number' || i < 0 || i === lastIdxRef.current) return
-      lastIdxRef.current = i
-      setCurrentIndex(i)
-      const item = itemsRef.current?.[i]
-      if (item && getNowPlaying()?.source === 'youtube') {
-        updateNowPlaying({
-          title: item.snippet?.title || '',
-          sub: item.snippet?.videoOwnerChannelTitle || '',
-        })
-        recordPlay({
-          source: 'youtube',
-          title: item.snippet?.title,
-          sub: item.snippet?.videoOwnerChannelTitle,
-        })
-      }
-    }, 800)
-    return () => clearInterval(id)
-  }, [])
+  // 이벤트 리스너는 한 번만 등록되므로 ref로 최신 로직 유지
+  advanceRef.current = () => {
+    const list = itemsRef.current
+    if (!list?.length) return
+    playIndex((lastIdxRef.current + 1) % list.length) // 끝나면 처음부터 (전체 반복)
+  }
+  skipRef.current = () => {
+    const list = itemsRef.current
+    if (!list?.length) return
+    errorRunRef.current += 1
+    if (errorRunRef.current >= list.length) {
+      setError('재생할 수 있는 영상이 없어요 (임베드 차단/삭제된 영상들)')
+      return
+    }
+    playIndex((lastIdxRef.current + 1) % list.length)
+  }
 
   useEffect(() => onVolumeChange((v) => playerRef.current?.setVolume?.(Math.round(v * 100))), [])
   useEffect(

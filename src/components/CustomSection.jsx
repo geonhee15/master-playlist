@@ -451,6 +451,12 @@ export default function CustomSection() {
     loadSource(currentTrack, target, v ? v.currentTime : null, wasPlaying)
   }
 
+  // 다른 소스가 재생을 시작할 때 호출됨 — 큐는 유지하고 소리만 멈춘다
+  const pausePlayback = () => {
+    if (engine === 'youtube') ytPlayerRef.current?.pauseVideo?.()
+    else videoRef.current?.pause()
+  }
+
   const stop = () => {
     const v = videoRef.current
     if (v) {
@@ -497,7 +503,7 @@ export default function CustomSection() {
           .join(' · '),
         isPlaying,
         detailVisible: true, // 커스텀 독은 섹션 안 어디서나 보이므로 섹션 밖에서만 위젯 표시
-        controls: { toggle: togglePlay, stop },
+        controls: { toggle: togglePlay, stop, pause: pausePlayback },
       })
     } else {
       clearNowPlaying('custom')
@@ -537,29 +543,13 @@ export default function CustomSection() {
   // 전역 검색에서 커스텀 플리 클릭 → 해당 플리 열기
   useEffect(() => {
     const onNavigate = (e) => {
-      if (e.detail?.section !== 'custom') return
+      if (e.detail?.section !== 'custom' || !e.detail.playlistId) return
       setEditingPlaylist(null)
       setSelectedId(e.detail.playlistId)
     }
     window.addEventListener('mp:navigate', onNavigate)
     return () => window.removeEventListener('mp:navigate', onNavigate)
   }, [])
-
-  // 스페이스바 = 재생/일시정지 (입력창 타이핑 중일 때는 제외).
-  // preventDefault로 스크롤·포커스된 버튼 눌림도 막는다.
-  useEffect(() => {
-    if (!currentTrack) return
-    const onKey = (e) => {
-      if ((e.code !== 'Space' && e.key !== ' ') || e.defaultPrevented) return
-      const t = e.target
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable))
-        return
-      e.preventDefault()
-      togglePlay()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [currentTrack])
 
   const videoEvents = {
     onPlay: () => setIsPlaying(true),

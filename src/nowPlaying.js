@@ -11,6 +11,14 @@ const emit = () => {
 export const getNowPlaying = () => state
 
 export const setNowPlaying = (next) => {
+  // 다른 소스가 재생을 시작하면 기존 소스는 일시정지 (중첩 재생 방지)
+  if (state && next && state.source !== next.source) {
+    try {
+      ;(state.controls?.pause || state.controls?.stop)?.()
+    } catch {
+      /* 이전 플레이어가 이미 사라진 경우 */
+    }
+  }
   state = next
   emit()
 }
