@@ -169,6 +169,45 @@ export default function CustomSection() {
     else openMediaFolder()
   }
 
+  // 플리 파일(.mpl.json) 가져오기 — 내보내기한 파일을 업로드하면 그대로 복사된다
+  const importInputRef = useRef(null)
+
+  const importPlaylistFile = async (file) => {
+    if (!file) return
+    try {
+      const data = JSON.parse(await file.text())
+      const raw = data?.playlist || data
+      if (!raw?.name || !Array.isArray(raw.tracks)) throw new Error('형식 오류')
+      const playlist = {
+        id: raw.id || crypto.randomUUID(),
+        name: String(raw.name),
+        description: raw.description || '',
+        cover: raw.cover || '',
+        tracks: raw.tracks
+          .filter((t) => t && t.title)
+          .map((t) => ({
+            id: t.id || crypto.randomUUID(),
+            title: String(t.title),
+            originalArtist: t.originalArtist || '',
+            coverArtist: t.coverArtist || '',
+            originalTitle: t.originalTitle || '',
+            description: t.description || '',
+            lyrics: t.lyrics || '',
+            audioFile: t.audioFile || '',
+            videoFile: t.videoFile || '',
+            youtubeUrl: t.youtubeUrl || '',
+          })),
+      }
+      const exists = library?.playlists.some((p) => p.id === playlist.id)
+      if (exists && !confirm(`"${playlist.name}" 플리가 이미 있어요. 파일 내용으로 덮어쓸까요?`))
+        return
+      setError('')
+      upsertPlaylist(playlist)
+    } catch {
+      setError('플리 파일을 읽지 못했어요 — "파일로 내보내기"로 만든 .json 파일인지 확인해주세요')
+    }
+  }
+
   // 플리 단위로 저장 — 탭이 여러 개 열려 있어도 서로의 다른 플리를 덮어쓰지 않는다.
   // 방문자 모드에서는 이 브라우저의 localStorage에만 저장된다.
   const upsertPlaylist = (pl) => {
@@ -543,6 +582,23 @@ export default function CustomSection() {
                   폴더: {folderName()}
                 </button>
               )}
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,application/json"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  importPlaylistFile(e.target.files?.[0])
+                  e.target.value = ''
+                }}
+              />
+              <button
+                className="btn small"
+                onClick={() => importInputRef.current?.click()}
+                title="내보내기한 플리 파일(.mpl.json)을 업로드하면 그대로 복사돼요"
+              >
+                플리 파일 가져오기
+              </button>
               <button className="btn primary" onClick={() => setEditingPlaylist('new')}>
                 + 새 플레이리스트
               </button>
@@ -565,7 +621,8 @@ export default function CustomSection() {
               <p className="muted">
                 음악/영상이 들어있는 폴더를 선택하면 그 파일들로 나만의 플리를 만들 수 있어요.
                 파일은 어디에도 업로드되지 않고 이 브라우저에서만 재생되며, 플리는 이 브라우저에
-                저장됩니다. 유튜브 링크 곡은 폴더 없이도 추가할 수 있어요.
+                저장됩니다. 유튜브 링크 곡은 폴더 없이도 추가할 수 있고, 다른 곳에서 내보낸 플리
+                파일이 있다면 위의 <b>플리 파일 가져오기</b>로 그대로 불러올 수 있어요.
               </p>
               {supportsFolderPick() ? (
                 <div className="connect-actions">

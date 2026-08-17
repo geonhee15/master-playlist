@@ -4,6 +4,18 @@ import CustomLyricsPanel from './CustomLyricsPanel.jsx'
 import { PlayIcon, PauseIcon, VideoIcon, ShuffleIcon, YouTubeIcon } from './Icons.jsx'
 import { mediaUrl } from '../library.js'
 
+// 플리 전체(곡 정보·가사·유튜브 링크·커버 설정 포함)를 파일 하나로 내보내기
+function exportPlaylist(playlist) {
+  const data = { app: 'master-playlist', type: 'playlist', version: 1, playlist }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${playlist.name}.mpl.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function CustomPlaylistDetail({
   playlist,
   media,
@@ -88,6 +100,13 @@ export default function CustomPlaylistDetail({
             </button>
             <button className="btn small" onClick={onEditPlaylist}>
               정보 수정
+            </button>
+            <button
+              className="btn small"
+              onClick={() => exportPlaylist(playlist)}
+              title="이 플리의 모든 정보를 파일 하나로 저장 — 다른 곳에서 가져오기로 복원"
+            >
+              파일로 내보내기
             </button>
             <button className="btn small danger" onClick={onDelete}>
               삭제
