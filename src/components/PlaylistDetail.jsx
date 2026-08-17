@@ -260,7 +260,8 @@ export default function PlaylistDetail({ playlist, onBack }) {
           <span>
             {!isLiked && (error.status === 403 || error.status === 404)
               ? `Spotify API가 트랙 목록 조회를 제한하고 있고 (${error.status}), 비공개 플리라서 임베드 데이터도 없어요. ` +
-                'Spotify 앱에서 이 플리를 공개(프로필에 추가)로 바꾸면 여기서도 목록과 가사가 보여요.'
+                'Spotify 앱에서 이 플리를 공개(프로필에 추가)로 바꾸면 여기서도 목록과 가사가 보여요. ' +
+                '모든 플리가 이렇게 뜬다면 연결된 계정(목록 화면 우상단 프로필)이 플리 주인 계정이 맞는지 확인해보세요.'
               : error.message}
           </span>
           <button className="notice-close" onClick={() => setNoticeDismissed(true)} title="닫기">
