@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import Sidebar from './components/Sidebar.jsx'
 import SpotifySection from './components/SpotifySection.jsx'
 import CustomSection from './components/CustomSection.jsx'
+import YouTubeSection from './components/YouTubeSection.jsx'
+import VolumeControl from './components/VolumeControl.jsx'
 import { exchangeCode } from './spotify.js'
 
 export default function App() {
@@ -50,10 +52,14 @@ export default function App() {
         <div style={{ display: section === 'spotify' ? 'block' : 'none' }}>
           <SpotifySection authError={authError} clearAuthError={() => setAuthError('')} />
         </div>
+        <div style={{ display: section === 'youtube' ? 'block' : 'none' }}>
+          <YouTubeSection />
+        </div>
         <div style={{ display: section === 'custom' ? 'block' : 'none' }}>
           <CustomSection />
         </div>
       </main>
+      <VolumeControl />
     </div>
   )
 }

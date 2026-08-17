@@ -9,6 +9,12 @@ import {
   mediaUrl,
   openMediaFolder,
 } from '../library.js'
+import { getYouTubeAPI, parseVideoId } from '../youtube.js'
+import { getVolume, onVolumeChange } from '../volume.js'
+
+// 파일이 없고 유튜브 링크만 있는 곡 → 유튜브 임베드로 재생
+const trackYouTubeId = (track) =>
+  track && !track.audioFile && !track.videoFile ? parseVideoId(track.youtubeUrl) : null
 
 function PlaylistForm({ initial, media, onRefreshMedia, onSubmit, onCancel }) {
   const [name, setName] = useState(initial?.name || '')
@@ -116,7 +122,7 @@ export default function CustomSection() {
     })
     savePlaylist(pl)
       .then(setLibrary)
-      .catch(() => setError('저장 실패 — 개발 서버가 실행 중인지 확인하세요'))
+      .catch(() => setError('저장 실패 — 플리 편집은 로컬(개발 서버)에서만 할 수 있어요'))
   }
 
   const deletePlaylist = (id) => {
@@ -124,14 +130,17 @@ export default function CustomSection() {
     if (selectedId === id) setSelectedId(null)
     deletePlaylistById(id)
       .then(setLibrary)
-      .catch(() => setError('삭제 실패 — 개발 서버가 실행 중인지 확인하세요'))
+      .catch(() => setError('삭제 실패 — 플리 편집은 로컬(개발 서버)에서만 할 수 있어요'))
   }
 
   const selected = library?.playlists.find((p) => p.id === selectedId)
 
-  // ---- 플레이어 ----
+  // ---- 플레이어 (파일: <video> 엔진 / 유튜브: IFrame Player 엔진) ----
   const videoRef = useRef(null)
   const pendingSeek = useRef(null)
+  const ytMountRef = useRef(null) // PlayerDock 안의 유튜브 플레이어 자리
+  const ytPlayerRef = useRef(null)
+  const handleEndedRef = useRef(null) // 유튜브 이벤트는 한 번만 등록되므로 ref로 최신 로직 유지
   const [queue, setQueue] = useState([])
   const [queueIndex, setQueueIndex] = useState(-1)
   const [mode, setMode] = useState('audio') // 'audio' | 'video'
@@ -171,20 +180,67 @@ export default function CustomSection() {
     return a
   }
 
-  const loadSource = (track, m, seekTo = null, autoplay = true) => {
+  // 유튜브 플레이어는 처음 필요할 때 한 번만 생성
+  const ensureYtPlayer = async () => {
+    if (ytPlayerRef.current) return ytPlayerRef.current
+    const YT = await getYouTubeAPI()
+    if (ytPlayerRef.current) return ytPlayerRef.current
+    const mount = document.createElement('div')
+    ytMountRef.current.appendChild(mount)
+    const player = await new Promise((resolve) => {
+      const p = new YT.Player(mount, {
+        width: '100%',
+        height: '100%',
+        playerVars: { playsinline: 1, rel: 0 },
+        events: {
+          onReady: () => {
+            p.setVolume(Math.round(getVolume() * 100))
+            resolve(p)
+          },
+          onStateChange: (e) => {
+            if (e.data === 0) handleEndedRef.current?.()
+            else if (e.data === 1) setIsPlaying(true)
+            else if (e.data === 2) setIsPlaying(false)
+          },
+        },
+      })
+    })
+    ytPlayerRef.current = player
+    return player
+  }
+
+  const loadSource = async (track, m, seekTo = null, autoplay = true) => {
+    const ytId = trackYouTubeId(track)
     const v = videoRef.current
-    if (!v) return
-    pendingSeek.current = seekTo
-    v.src = mediaUrl(m === 'video' ? track.videoFile : track.audioFile)
-    if (autoplay) v.play().catch(() => {})
+    if (ytId) {
+      // 파일 엔진 정지 후 유튜브로
+      if (v) {
+        v.pause()
+        v.removeAttribute('src')
+        v.load()
+      }
+      const player = await ensureYtPlayer()
+      const opts = { videoId: ytId, startSeconds: seekTo || 0 }
+      if (autoplay) player.loadVideoById(opts)
+      else player.cueVideoById(opts)
+    } else {
+      // 유튜브 엔진 정지 후 파일로
+      ytPlayerRef.current?.stopVideo?.()
+      if (!v) return
+      pendingSeek.current = seekTo
+      v.src = mediaUrl(m === 'video' ? track.videoFile : track.audioFile)
+      if (autoplay) v.play().catch(() => {})
+    }
   }
 
   // 큐를 바꾸지 않고 큐 내부의 index 곡을 재생 (자동 다음 곡/이전·다음 버튼용)
   const startAt = (q, index) => {
     const track = q[index]
-    // 직전에 보던 형식(영상/음악)을 유지하고, 그 형식 파일이 없으면 있는 쪽으로
-    const m =
-      mode === 'video'
+    const ytId = trackYouTubeId(track)
+    // 유튜브 곡은 항상 영상, 파일 곡은 직전에 보던 형식(영상/음악)을 유지
+    const m = ytId
+      ? 'video'
+      : mode === 'video'
         ? track.videoFile
           ? 'video'
           : 'audio'
@@ -194,6 +250,7 @@ export default function CustomSection() {
     setQueue(q)
     setQueueIndex(index)
     setMode(m)
+    if (ytId) setVideoAspect(16 / 9)
     setTime(0)
     setDuration(0)
     loadSource(track, m)
@@ -231,11 +288,21 @@ export default function CustomSection() {
     }
   }
 
+  const engine = currentTrack && trackYouTubeId(currentTrack) ? 'youtube' : 'file'
+
   const togglePlay = () => {
-    const v = videoRef.current
-    if (!v || !currentTrack) return
-    if (v.paused) v.play().catch(() => {})
-    else v.pause()
+    if (!currentTrack) return
+    if (engine === 'youtube') {
+      const p = ytPlayerRef.current
+      if (!p) return
+      if (p.getPlayerState?.() === 1) p.pauseVideo()
+      else p.playVideo()
+    } else {
+      const v = videoRef.current
+      if (!v) return
+      if (v.paused) v.play().catch(() => {})
+      else v.pause()
+    }
   }
 
   const step = (dir) => {
@@ -244,7 +311,8 @@ export default function CustomSection() {
   }
 
   const seekTo = (sec) => {
-    if (videoRef.current) videoRef.current.currentTime = sec
+    if (engine === 'youtube') ytPlayerRef.current?.seekTo?.(sec, true)
+    else if (videoRef.current) videoRef.current.currentTime = sec
   }
 
   const toggleMode = () => {
@@ -263,12 +331,54 @@ export default function CustomSection() {
       v.removeAttribute('src')
       v.load()
     }
+    ytPlayerRef.current?.stopVideo?.()
     setQueue([])
     setQueueIndex(-1)
     setIsPlaying(false)
     setTime(0)
     setDuration(0)
   }
+
+  // 곡이 끝났을 때 (파일/유튜브 공통): 한 곡 반복이면 처음부터, 아니면 다음 곡 (끝이면 첫 곡)
+  const handleEnded = () => {
+    if (repeatOne) {
+      if (engine === 'youtube') {
+        ytPlayerRef.current?.seekTo?.(0, true)
+        ytPlayerRef.current?.playVideo?.()
+      } else {
+        const v = videoRef.current
+        if (v) {
+          v.currentTime = 0
+          v.play().catch(() => {})
+        }
+      }
+    } else if (queue.length) {
+      startAt(queue, (queueIndex + 1) % queue.length)
+    }
+  }
+  handleEndedRef.current = handleEnded
+
+  // 전역 음량을 두 재생 엔진에 적용
+  useEffect(() => {
+    const apply = (v) => {
+      if (videoRef.current) videoRef.current.volume = v
+      ytPlayerRef.current?.setVolume?.(Math.round(v * 100))
+    }
+    apply(getVolume())
+    return onVolumeChange(apply)
+  }, [])
+
+  // 유튜브 재생 중에는 시간/길이를 주기적으로 읽어온다 (가사 싱크·시크바용)
+  useEffect(() => {
+    if (engine !== 'youtube') return
+    const id = setInterval(() => {
+      const p = ytPlayerRef.current
+      if (!p?.getCurrentTime) return
+      setTime(p.getCurrentTime() || 0)
+      setDuration(p.getDuration() || 0)
+    }, 300)
+    return () => clearInterval(id)
+  }, [engine, currentTrack?.id])
 
   // 영상이 커질수록 가사 패널 표시 줄 수를 7줄에서 한 줄씩 줄인다 (겹침 방지)
   const videoDockWidth = videoAspect >= 1 ? videoSize : videoSize * videoAspect
@@ -305,15 +415,7 @@ export default function CustomSection() {
         pendingSeek.current = null
       }
     },
-    onEnded: (e) => {
-      if (repeatOne) {
-        e.target.currentTime = 0
-        e.target.play().catch(() => {})
-      } else if (queue.length) {
-        // 마지막 곡이 끝나면 첫 곡부터 다시 (전체 반복이 기본)
-        startAt(queue, (queueIndex + 1) % queue.length)
-      }
-    },
+    onEnded: () => handleEnded(),
   }
 
   return (
@@ -408,6 +510,8 @@ export default function CustomSection() {
       <PlayerDock
         videoRef={videoRef}
         videoEvents={videoEvents}
+        engine={engine}
+        ytMountRef={ytMountRef}
         track={currentTrack}
         mode={mode}
         isPlaying={isPlaying}

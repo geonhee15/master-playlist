@@ -38,6 +38,8 @@ export default function PlayerDock({
   videoSize,
   onVideoSize,
   videoAspect,
+  engine = 'file',
+  ytMountRef,
 }) {
   const showVideo = track && mode === 'video'
 
@@ -82,13 +84,14 @@ export default function PlayerDock({
   }, [videoRef])
 
   const goFullscreen = async () => {
-    const v = videoRef.current
-    if (!v) return
+    const target =
+      engine === 'youtube' ? ytMountRef?.current?.querySelector('iframe') : videoRef.current
+    if (!target) return
     try {
-      await v.requestFullscreen()
+      await target.requestFullscreen()
     } catch {
       // Safari 등 표준 API가 막힌 환경 폴백 (영상 전용 전체화면)
-      v.webkitEnterFullscreen?.()
+      target.webkitEnterFullscreen?.()
     }
   }
 
@@ -96,8 +99,23 @@ export default function PlayerDock({
     <div className={`player-dock ${track ? '' : 'dock-hidden'}`}>
       <div className="video-panel" style={{ display: showVideo ? 'flex' : 'none' }}>
         <div className="video-box" style={{ width: displayWidth }}>
-          {/* 이 <video> 엘리먼트가 오디오/영상 모두의 재생 엔진 (오디오 모드에선 숨김) */}
-          <video ref={videoRef} playsInline preload="auto" {...videoEvents} />
+          {/* 이 <video> 엘리먼트가 파일 재생 엔진 (오디오 모드·유튜브 곡에선 숨김) */}
+          <video
+            ref={videoRef}
+            playsInline
+            preload="auto"
+            style={{ display: engine === 'file' ? 'block' : 'none' }}
+            {...videoEvents}
+          />
+          {/* 유튜브 곡은 IFrame Player가 여기 들어간다 */}
+          <div
+            className="yt-host"
+            ref={ytMountRef}
+            style={{
+              display: engine === 'youtube' ? 'block' : 'none',
+              height: engine === 'youtube' ? Math.round(displayWidth / (16 / 9)) : undefined,
+            }}
+          />
           <div className="video-resize-handle" onPointerDown={startResize} title="드래그로 크기 조절" />
         </div>
       </div>

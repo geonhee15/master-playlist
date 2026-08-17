@@ -71,6 +71,23 @@ export const FullscreenIcon = ({ size }) => (
   </Icon>
 )
 
+export const VolumeIcon = ({ size, muted }) => (
+  <Icon size={size}>
+    <path d="M2 6v4h2.8L9 13.5v-11L4.8 6z" />
+    {muted ? (
+      <path d="M10.8 6.2 14 9.4M14 6.2l-3.2 3.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+    ) : (
+      <path d="M10.7 5.2a4 4 0 0 1 0 5.6M12.6 3.4a6.6 6.6 0 0 1 0 9.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+    )}
+  </Icon>
+)
+
+export const YouTubeIcon = ({ size }) => (
+  <Icon size={size}>
+    <path d="M14.6 4.6c-.2-.9-.8-1.5-1.6-1.7C11.6 2.5 8 2.5 8 2.5s-3.6 0-5 .4c-.8.2-1.4.8-1.6 1.7C1 6 1 8 1 8s0 2 .4 3.4c.2.9.8 1.5 1.6 1.7 1.4.4 5 .4 5 .4s3.6 0 5-.4c.8-.2 1.4-.8 1.6-1.7C15 10 15 8 15 8s0-2-.4-3.4zM6.6 10.4V5.6L10.8 8z" />
+  </Icon>
+)
+
 export const VideoIcon = ({ size }) => (
   <Icon size={size}>
     <path d="M1.5 4.5A1.5 1.5 0 0 1 3 3h6.5A1.5 1.5 0 0 1 11 4.5v1.4l3.5-2.4v9l-3.5-2.4v1.4A1.5 1.5 0 0 1 9.5 13H3a1.5 1.5 0 0 1-1.5-1.5z" />

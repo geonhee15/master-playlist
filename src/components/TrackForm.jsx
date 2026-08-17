@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { openMediaFolder } from '../library.js'
+import { parseVideoId } from '../youtube.js'
 
 export default function TrackForm({ initial, media, onRefresh, onSubmit, onCancel }) {
   const [f, setF] = useState({
@@ -11,9 +12,11 @@ export default function TrackForm({ initial, media, onRefresh, onSubmit, onCance
     lyrics: initial?.lyrics || '',
     audioFile: initial?.audioFile || '',
     videoFile: initial?.videoFile || '',
+    youtubeUrl: initial?.youtubeUrl || '',
   })
   const set = (key) => (e) => setF({ ...f, [key]: e.target.value })
-  const valid = f.title.trim() && (f.audioFile || f.videoFile)
+  const youtubeOk = !f.youtubeUrl || !!parseVideoId(f.youtubeUrl)
+  const valid = f.title.trim() && (f.audioFile || f.videoFile || parseVideoId(f.youtubeUrl))
 
   return (
     <div className="card form-card">
@@ -80,6 +83,19 @@ export default function TrackForm({ initial, media, onRefresh, onSubmit, onCance
       </div>
 
       <label className="field">
+        <span>유튜브 링크 (선택)</span>
+        <input
+          className="input"
+          value={f.youtubeUrl}
+          onChange={set('youtubeUrl')}
+          placeholder="https://www.youtube.com/watch?v=… — 파일 없이 유튜브 임베드로 재생"
+        />
+        {!youtubeOk && (
+          <span className="field-error">유튜브 영상 주소를 인식하지 못했어요.</span>
+        )}
+      </label>
+
+      <label className="field">
         <span>설명</span>
         <textarea
           className="input"
@@ -105,7 +121,9 @@ export default function TrackForm({ initial, media, onRefresh, onSubmit, onCance
         />
       </label>
 
-      {!valid && <p className="hint">제목과, 오디오/영상 파일 중 하나 이상이 필요해요.</p>}
+      {!valid && (
+        <p className="hint">제목과, 오디오/영상 파일 또는 유튜브 링크 중 하나 이상이 필요해요.</p>
+      )}
 
       <div className="form-actions">
         <button

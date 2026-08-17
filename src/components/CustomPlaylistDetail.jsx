@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import TrackForm from './TrackForm.jsx'
 import CustomLyricsPanel from './CustomLyricsPanel.jsx'
-import { PlayIcon, PauseIcon, VideoIcon, ShuffleIcon } from './Icons.jsx'
+import { PlayIcon, PauseIcon, VideoIcon, ShuffleIcon, YouTubeIcon } from './Icons.jsx'
 import { mediaUrl } from '../library.js'
 
 export default function CustomPlaylistDetail({
@@ -180,6 +180,11 @@ export default function CustomPlaylistDetail({
                   {t.videoFile && (
                     <span className="badge" title={t.videoFile}>
                       <VideoIcon size={12} />
+                    </span>
+                  )}
+                  {t.youtubeUrl && (
+                    <span className="badge" title="유튜브 재생">
+                      <YouTubeIcon size={12} />
                     </span>
                   )}
                 </span>

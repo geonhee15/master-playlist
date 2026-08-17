@@ -1162,3 +1162,133 @@ a:hover {
   margin-top: 8px;
   border: 1px solid var(--border);
 }
+
+/* ---- 유튜브 ---- */
+.nav-icon.youtube {
+  color: #ff6b6b;
+}
+
+.yt-host {
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+}
+
+.yt-host iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.yt-embed {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.yt-embed:empty {
+  display: grid;
+  place-items: center;
+}
+
+.yt-embed iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.track-row.yt {
+  grid-template-columns: 36px 64px minmax(0, 1fr);
+}
+
+.yt-thumb {
+  width: 60px;
+  height: 34px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.add-playlist-row {
+  display: flex;
+  gap: 8px;
+  max-width: 640px;
+  margin-bottom: 20px;
+}
+
+.yt-card {
+  position: relative;
+  padding: 0;
+}
+
+.yt-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.yt-card-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.yt-card:hover .yt-card-remove {
+  opacity: 1;
+}
+
+.field-error {
+  font-size: 12px;
+  color: #ff8a80;
+}
+
+/* ---- 음량 조절 (우상단 고정) ---- */
+.volume-control {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 6px;
+  background: rgba(22, 24, 29, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.volume-control .volume-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.volume-control .volume-icon:hover {
+  color: var(--text);
+}
+
+.volume-control input[type='range'] {
+  width: 88px;
+  accent-color: var(--accent);
+  height: 4px;
+}

@@ -1,6 +1,7 @@
 # 마스터 플레이리스트
 
 나만의 플레이리스트 모음 웹사이트. 섹션별로 여러 소스의 플레이리스트를 모아서 본다.
+로컬 개발 서버로 편집하고, Cloudflare Pages(masterplaylist.net)로 배포해서 본다.
 
 ## 실행
 
@@ -31,6 +32,42 @@ npm run dev
   - 데이터는 `data/library.json`에 저장 (브라우저와 무관하게 파일로 보존)
 - 새 섹션 (예정)
 
+## 섹션 추가 메모
+
+- **YouTube 섹션**: YouTube Data API 키(localStorage)로 플레이리스트 목록/영상을 가져오고,
+  IFrame Player로 재생 (마지막 영상 후 처음부터 반복)
+- **커스텀 곡의 유튜브 링크**: 파일 없이 `youtubeUrl`만 있으면 유튜브 임베드로 재생.
+  임베드를 막아둔 영상(일부 방송사 등)은 재생 불가 — "동영상을 재생할 수 없음"이 뜨면 그 경우
+- **음량 슬라이더**: 우상단 고정, 파일/유튜브 재생 모두에 적용 (Spotify 임베드는 API가 없어 미적용)
+
+## 배포 (Cloudflare Pages)
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages → Create → Pages →
+   Connect to Git** → `geonhee15/master-playlist` 선택
+2. 빌드 설정: Framework preset **Vite** (Build command `npm run build`, Output `dist`)
+3. 배포 후 **Custom domains**에서 `masterplaylist.net` 연결 (도메인이 같은 계정에 있으면 클릭 몇 번)
+4. Spotify 로그인용: [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
+   앱 Settings → Redirect URIs에 `https://masterplaylist.net/callback` 추가
+5. `main`에 푸시할 때마다 자동 재배포
+
+배포 환경 동작 방식:
+
+- 플리 데이터는 커밋된 `data/library.json`이 정적 `/api/library`로 서빙됨 (빌드 시 복사).
+  **편집은 로컬에서만** 가능 — 로컬에서 고치고 커밋/푸시하면 사이트에 반영
+- `functions/api/`의 Pages Functions가 가사(LRCLIB)와 Spotify 트랙 우회를 배포 환경에서도 제공
+- `public/media/`의 파일은 배포되지 않음 — 공개 사이트에서 재생할 곡은 **유튜브 링크**로 등록
+
+## 구글 로그인 (Cloudflare Access)
+
+사이트 전체에 구글 로그인 게이트를 씌우려면 코드 없이 Cloudflare Access를 쓴다:
+
+1. dash.cloudflare.com → **Zero Trust** (무료 플랜, 팀 이름 아무거나)
+2. **Settings → Authentication → Login methods → Add new → Google** (안내대로 구글 OAuth 클라이언트 생성)
+3. **Access → Applications → Add an application → Self-hosted** →
+   도메인 `masterplaylist.net` 입력
+4. 정책(Policy): Allow → Include → **Emails** → 본인 지메일 입력 (친구를 추가하고 싶으면 이메일 추가)
+5. 저장하면 사이트 접속 시 구글 로그인 화면이 먼저 뜨고, 허용된 계정만 들어올 수 있다
+
 ## UI 규칙
 
 - 컬러 이모지 사용 금지. 단색 글리프(♪ ♬ ♥ ✕ ✎ ↑ ↓)와 `src/components/Icons.jsx`의
@@ -39,8 +76,9 @@ npm run dev
 ## 구조
 
 ```
-data/library.json          # 커스텀 섹션 데이터 (플레이리스트 + 곡 정보)
-public/media/              # 커스텀 섹션 미디어 파일 넣는 곳
+data/library.json          # 커스텀 섹션 데이터 (커밋됨 — 배포에 포함)
+public/media/              # 커스텀 섹션 미디어 파일 넣는 곳 (커밋 안 됨)
+functions/api/             # Cloudflare Pages Functions (배포용 가사/Spotify 프록시)
 server/
   library-plugin.js        # 로컬 API (라이브러리 저장/파일 목록/미디어 스트리밍)
 src/

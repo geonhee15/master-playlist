@@ -1,9 +1,8 @@
 node_modules/
 dist/
 
-# 개인 데이터 — 커밋하지 않음 (미디어 파일, 플레이리스트 데이터)
+# 미디어 파일은 커밋하지 않음 (플리 데이터 data/library.json은 배포를 위해 커밋)
 public/media/
-data/
 
 # 로컬 도구 설정
 .claude/
