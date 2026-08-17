@@ -23,6 +23,63 @@ export function parseLrc(lrc) {
 export const showSingerLabel = (lines, i) =>
   !!lines[i].singer && (i === 0 || lines[i - 1].singer !== lines[i].singer)
 
+// 가사 가져오기: 1차 서버 프록시(/api/lyrics), 실패 시 LRCLIB 직접 요청(CORS 허용)
+// — 프록시가 없는 정적 호스팅 환경에서도 가사가 나오도록
+async function fetchLyricsData(track) {
+  const meta = {
+    track: track.name || '',
+    artist: track.artists?.[0]?.name || '',
+    album: track.album?.name || '',
+    duration: track.duration_ms ? String(Math.round(track.duration_ms / 1000)) : '',
+  }
+
+  try {
+    const res = await fetch(`/api/lyrics?${new URLSearchParams(meta)}`)
+    const type = res.headers.get('content-type') || ''
+    if (res.ok && type.includes('json')) {
+      const data = await res.json()
+      if (data?.syncedLyrics || data?.plainLyrics) return data
+    }
+  } catch {
+    /* 프록시 없음 → 직접 요청으로 */
+  }
+
+  try {
+    let res = await fetch(
+      `https://lrclib.net/api/get?${new URLSearchParams({
+        track_name: meta.track,
+        artist_name: meta.artist,
+        album_name: meta.album,
+        duration: meta.duration,
+      })}`,
+    )
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.syncedLyrics || data?.plainLyrics) return data
+    }
+    res = await fetch(
+      `https://lrclib.net/api/search?${new URLSearchParams({
+        track_name: meta.track,
+        artist_name: meta.artist,
+      })}`,
+    )
+    if (res.ok) {
+      const list = await res.json()
+      const dur = Number(meta.duration) || 0
+      const close = (x) => !dur || Math.abs((x.duration || 0) - dur) <= 3
+      return (
+        list.find((x) => x.syncedLyrics && close(x)) ||
+        list.find((x) => x.syncedLyrics) ||
+        list.find((x) => x.plainLyrics && close(x)) ||
+        null
+      )
+    }
+  } catch {
+    /* 네트워크 실패 */
+  }
+  return null
+}
+
 export default function LyricsPanel({ track, position, onSeek }) {
   const [state, setState] = useState({ status: 'loading' })
   const listRef = useRef(null)
@@ -36,14 +93,7 @@ export default function LyricsPanel({ track, position, onSeek }) {
     if (!track) return
     let alive = true
     setState({ status: 'loading' })
-    const params = new URLSearchParams({
-      track: track.name || '',
-      artist: track.artists?.[0]?.name || '',
-      album: track.album?.name || '',
-      duration: track.duration_ms ? String(Math.round(track.duration_ms / 1000)) : '',
-    })
-    fetch(`/api/lyrics?${params}`)
-      .then((res) => (res.ok ? res.json() : null))
+    fetchLyricsData(track)
       .then((data) => {
         if (!alive) return
         if (data?.syncedLyrics) setState({ status: 'synced', lines: parseLrc(data.syncedLyrics) })

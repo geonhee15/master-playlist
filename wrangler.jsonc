@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers 배포 설정 — 정적 에셋(dist) + /api/* 처리 워커
+  "name": "master-playlist",
+  "compatibility_date": "2025-06-01",
+  "main": "worker/index.js",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application",
+    "binding": "ASSETS"
+  }
+}
