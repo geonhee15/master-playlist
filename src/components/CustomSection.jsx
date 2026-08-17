@@ -495,6 +495,17 @@ export default function CustomSection() {
     ? Math.max(2, Math.min(7, Math.floor((window.innerHeight - 330 - videoDockHeight) / 35)))
     : 7
 
+  // 전역 검색에서 커스텀 플리 클릭 → 해당 플리 열기
+  useEffect(() => {
+    const onNavigate = (e) => {
+      if (e.detail?.section !== 'custom') return
+      setEditingPlaylist(null)
+      setSelectedId(e.detail.playlistId)
+    }
+    window.addEventListener('mp:navigate', onNavigate)
+    return () => window.removeEventListener('mp:navigate', onNavigate)
+  }, [])
+
   // 스페이스바 = 재생/일시정지 (입력창 타이핑 중일 때는 제외).
   // preventDefault로 스크롤·포커스된 버튼 눌림도 막는다.
   useEffect(() => {
@@ -530,7 +541,7 @@ export default function CustomSection() {
     <section>
       {editingPlaylist ? (
         <>
-          <h1 className="section-title">커스텀</h1>
+          <h1 className="section-title">Custom</h1>
           <PlaylistForm
             initial={editingPlaylist === 'new' ? null : editingPlaylist}
             media={media}
@@ -575,7 +586,7 @@ export default function CustomSection() {
       ) : (
         <>
           <div className="section-head">
-            <h1 className="section-title">커스텀</h1>
+            <h1 className="section-title">Custom</h1>
             <div className="head-actions">
               {envMode === 'visitor' && folderConnected && (
                 <button className="btn small" onClick={() => connectFolder(false)} title="폴더 변경">

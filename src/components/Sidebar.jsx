@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { YouTubeIcon } from './Icons.jsx'
+import { getNickname, onNicknameChange } from '../profile.js'
 
 const SpotifyIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
@@ -7,6 +9,9 @@ const SpotifyIcon = () => (
 )
 
 export default function Sidebar({ section, onSelect }) {
+  const [nickname, setNicknameState] = useState(getNickname())
+  useEffect(() => onNicknameChange(setNicknameState), [])
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -15,6 +20,21 @@ export default function Sidebar({ section, onSelect }) {
           <div className="brand-title">Master Playlist</div>
           <div className="brand-sub">나만의 플레이리스트</div>
         </div>
+      </div>
+
+      <div className="profile-block">
+        <div className="nav-label">My profile</div>
+        <div className="welcome-text">
+          Welcome{nickname ? (
+            <>
+              , <b>{nickname}</b>
+            </>
+          ) : (
+            ''
+          )}
+          !
+        </div>
+        {!nickname && <div className="muted small-text">우상단 설정에서 닉네임을 정해보세요</div>}
       </div>
 
       <nav className="nav">
@@ -42,7 +62,7 @@ export default function Sidebar({ section, onSelect }) {
           onClick={() => onSelect('custom')}
         >
           <span className="nav-icon custom">♬</span>
-          커스텀
+          Custom
         </button>
         <div className="nav-item disabled">
           <span className="nav-icon">+</span>새 섹션 (예정)

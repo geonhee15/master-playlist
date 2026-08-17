@@ -33,16 +33,32 @@ function YtSetupCard({ onSaved }) {
           <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer">
             console.cloud.google.com
           </a>
-          에 구글 계정으로 로그인 후 <b>프로젝트 만들기</b> (이름 아무거나)
+          에 구글 계정으로 로그인
         </li>
         <li>
-          <b>API 및 서비스 → 라이브러리</b>에서 <b>YouTube Data API v3</b> 검색 → <b>사용 설정</b>
+          화면 <b>왼쪽 위 Google Cloud 로고 옆의 프로젝트 선택 드롭다운</b> 클릭 → 뜨는 창의{' '}
+          <b>오른쪽 위 "새 프로젝트"</b> → 이름 아무거나 (예: MasterPlaylist) → <b>만들기</b> →
+          잠시 후 알림에서 <b>"프로젝트 선택"</b>을 눌러 방금 만든 프로젝트로 전환됐는지 확인
         </li>
         <li>
-          <b>API 및 서비스 → 사용자 인증 정보</b> → <b>사용자 인증 정보 만들기 → API 키</b>
+          왼쪽 위 <b>햄버거 메뉴(≡) → "API 및 서비스" → "라이브러리"</b> → 검색창에{' '}
+          <b>YouTube Data API v3</b> 입력 → 결과 클릭 → 파란 <b>"사용" 버튼</b> 클릭
         </li>
-        <li>생성된 키를 복사해 아래에 붙여넣기</li>
+        <li>
+          왼쪽 메뉴 <b>"사용자 인증 정보"</b> → 상단의 <b>"+ 사용자 인증 정보 만들기" → "API 키"</b>{' '}
+          → 키가 바로 생성돼요 (나중에 목록에서 <b>"키 표시"</b>로 다시 볼 수 있음)
+        </li>
+        <li>키를 복사해 아래에 붙여넣고 저장</li>
       </ol>
+      <p className="hint">
+        <b>필수 체크:</b> OAuth 동의 화면·결제 등록은 필요 없어요 — API 키만으로 동작합니다.
+        <br />
+        <b>(권장) 키 보안 설정:</b> 만든 키 클릭 → <b>"API 제한사항" → "키 제한" → YouTube Data
+        API v3만 체크</b> 후 저장. "애플리케이션 제한사항"을 <b>웹사이트</b>로 걸 거면{' '}
+        <code>https://masterplaylist.net/*</code> 와 (로컬에서도 쓰면){' '}
+        <code>http://127.0.0.1:5173/*</code> 를 둘 다 추가하세요 — 제한 변경은 적용까지 5분쯤
+        걸립니다.
+      </p>
       <div className="client-id-row">
         <input
           className="input"
@@ -64,6 +80,7 @@ function YtPlaylistDetail({ playlist, onBack }) {
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
   const [currentIndex, setCurrentIndex] = useState(-1)
+  const [filter, setFilter] = useState('') // 플리 내 영상 검색
   const mountRef = useRef(null)
   const playerRef = useRef(null)
   const playerPromise = useRef(null)
@@ -160,8 +177,25 @@ function YtPlaylistDetail({ playlist, onBack }) {
               <span className="muted">영상 목록 불러오는 중…</span>
             </div>
           ) : (
+            <>
+            <input
+              className="input filter-input"
+              placeholder="이 플리에서 영상 찾기"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
             <div className="track-list">
-              {items.map((it, i) => {
+              {items
+                .map((it, i) => ({ it, i }))
+                .filter(({ it }) => {
+                  if (!filter.trim()) return true
+                  const q = filter.toLowerCase()
+                  return (
+                    it.snippet?.title?.toLowerCase().includes(q) ||
+                    it.snippet?.videoOwnerChannelTitle?.toLowerCase().includes(q)
+                  )
+                })
+                .map(({ it, i }) => {
                 const active = i === currentIndex
                 return (
                   <div
@@ -194,6 +228,7 @@ function YtPlaylistDetail({ playlist, onBack }) {
                 )
               })}
             </div>
+            </>
           )}
         </div>
 
@@ -229,6 +264,16 @@ export default function YouTubeSection() {
       .then(setPlaylists)
       .catch((e) => setError(e.message))
   }, [hasKey, ids.join(',')])
+
+  // 전역 검색에서 유튜브 플리 클릭 → 해당 플리 열기
+  useEffect(() => {
+    const onNavigate = (e) => {
+      if (e.detail?.section !== 'youtube') return
+      setSelectedId(e.detail.playlistId)
+    }
+    window.addEventListener('mp:navigate', onNavigate)
+    return () => window.removeEventListener('mp:navigate', onNavigate)
+  }, [])
 
   const addPlaylist = () => {
     const id = parsePlaylistId(addUrl)

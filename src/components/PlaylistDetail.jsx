@@ -17,6 +17,7 @@ export default function PlaylistDetail({ playlist, onBack }) {
   const [isPaused, setIsPaused] = useState(true)
   const [position, setPosition] = useState(0) // 초 단위 (가사 싱크용)
   const [noticeDismissed, setNoticeDismissed] = useState(false) // 새로고침하면 다시 보임
+  const [filter, setFilter] = useState('') // 플리 내 곡 검색
   const [usedFallback, setUsedFallback] = useState(false) // 임베드 데이터로 트랙을 불러온 경우
   const [shuffle, setShuffle] = useState(false)
   const [repeatOne, setRepeatOne] = useState(false)
@@ -285,6 +286,12 @@ export default function PlaylistDetail({ playlist, onBack }) {
       {tracks && (
         <div className="detail-columns">
           <div className="track-col">
+            <input
+              className="input filter-input"
+              placeholder="이 플리에서 곡 찾기"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+            />
             <div className="track-list">
               <div className="track-row head">
                 <span>#</span>
@@ -293,7 +300,18 @@ export default function PlaylistDetail({ playlist, onBack }) {
                 <span>앨범</span>
                 <span>시간</span>
               </div>
-              {tracks.map((t, i) => (
+              {tracks
+                .map((t, i) => ({ t, i }))
+                .filter(({ t }) => {
+                  if (!filter.trim()) return true
+                  const q = filter.toLowerCase()
+                  return (
+                    t.name?.toLowerCase().includes(q) ||
+                    t.artists?.some((a) => a.name?.toLowerCase().includes(q)) ||
+                    t.album?.name?.toLowerCase().includes(q)
+                  )
+                })
+                .map(({ t, i }) => (
                 <div
                   className={`track-row clickable ${i === currentIndex ? 'playing' : ''}`}
                   key={`${t.id || t.uri}-${i}`}

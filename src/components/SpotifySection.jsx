@@ -39,6 +39,20 @@ export default function SpotifySection({ authError, clearAuthError }) {
       })
   }, [loggedIn])
 
+  // 전역 검색에서 Spotify 플리 클릭 → 해당 플리 열기
+  useEffect(() => {
+    const onNavigate = (e) => {
+      if (e.detail?.section !== 'spotify') return
+      setPlaylists((current) => {
+        const target = current?.find((p) => p.id === e.detail.playlistId)
+        if (target) setSelected(target)
+        return current
+      })
+    }
+    window.addEventListener('mp:navigate', onNavigate)
+    return () => window.removeEventListener('mp:navigate', onNavigate)
+  }, [])
+
   const disconnect = () => {
     logout()
     setLoggedIn(false)

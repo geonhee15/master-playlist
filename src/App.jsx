@@ -4,6 +4,8 @@ import SpotifySection from './components/SpotifySection.jsx'
 import CustomSection from './components/CustomSection.jsx'
 import YouTubeSection from './components/YouTubeSection.jsx'
 import VolumeControl from './components/VolumeControl.jsx'
+import SettingsMenu from './components/SettingsMenu.jsx'
+import GlobalSearch from './components/GlobalSearch.jsx'
 import { exchangeCode } from './spotify.js'
 
 export default function App() {
@@ -35,6 +37,13 @@ export default function App() {
     }
   }, [])
 
+  // 전역 검색 결과 클릭 → 해당 섹션으로 이동 (섹션 내부에서 플리를 연다)
+  useEffect(() => {
+    const onNavigate = (e) => setSection(e.detail.section)
+    window.addEventListener('mp:navigate', onNavigate)
+    return () => window.removeEventListener('mp:navigate', onNavigate)
+  }, [])
+
   if (booting) {
     return (
       <div className="boot-screen">
@@ -59,7 +68,12 @@ export default function App() {
           <CustomSection />
         </div>
       </main>
-      <VolumeControl />
+      {/* 우상단 고정: 검색 · 음량 · 설정 */}
+      <div className="top-controls">
+        <GlobalSearch />
+        <VolumeControl />
+        <SettingsMenu />
+      </div>
     </div>
   )
 }

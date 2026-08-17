@@ -71,6 +71,20 @@ export const FullscreenIcon = ({ size }) => (
   </Icon>
 )
 
+export const SearchIcon = ({ size }) => (
+  <StrokeIcon size={size}>
+    <circle cx="7" cy="7" r="4.5" />
+    <path d="M10.5 10.5 14 14" />
+  </StrokeIcon>
+)
+
+export const GearIcon = ({ size }) => (
+  <StrokeIcon size={size}>
+    <circle cx="8" cy="8" r="2.2" />
+    <path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M12.4 3.6 11 5M5 11l-1.4 1.4" />
+  </StrokeIcon>
+)
+
 export const VolumeIcon = ({ size, muted }) => (
   <Icon size={size}>
     <path d="M2 6v4h2.8L9 13.5v-11L4.8 6z" />

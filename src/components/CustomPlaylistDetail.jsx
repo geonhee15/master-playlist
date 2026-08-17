@@ -38,7 +38,9 @@ export default function CustomPlaylistDetail({
   const [trackForm, setTrackForm] = useState(null) // null | 'new' | track
   const [menu, setMenu] = useState(null) // 우클릭 메뉴: {x, y, track, confirming}
   const [dragOrder, setDragOrder] = useState(null) // 드래그 중 임시 순서
+  const [filter, setFilter] = useState('') // 플리 내 곡 검색 (필터 중에는 드래그 비활성)
   const dragIndexRef = useRef(null)
+  const filtering = !!filter.trim()
 
   // Esc로 우클릭 메뉴 닫기
   useEffect(() => {
@@ -138,6 +140,13 @@ export default function CustomPlaylistDetail({
           </button>
         </div>
       ) : (
+        <>
+        <input
+          className="input filter-input"
+          placeholder="이 플리에서 곡 찾기"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
         <div className="track-list">
           <div className="track-row custom head">
             <span />
@@ -147,15 +156,25 @@ export default function CustomPlaylistDetail({
             <span>매체</span>
             <span />
           </div>
-          {rows.map((t, i) => {
+          {rows
+            .map((t, i) => ({ t, i }))
+            .filter(({ t }) => {
+              if (!filtering) return true
+              const q = filter.toLowerCase()
+              return [t.title, t.originalArtist, t.coverArtist, t.originalTitle, t.description].some(
+                (f) => f && f.toLowerCase().includes(q),
+              )
+            })
+            .map(({ t, i }) => {
             const active = t.id === currentTrackId
             const isDragging = dragOrder && dragIndexRef.current === i
             return (
               <div
                 className={`track-row custom ${active ? 'playing' : ''} ${isDragging ? 'dragging' : ''}`}
                 key={t.id}
-                draggable
+                draggable={!filtering}
                 onDragStart={(e) => {
+                  if (filtering) return
                   dragIndexRef.current = i
                   setDragOrder(playlist.tracks)
                   e.dataTransfer.effectAllowed = 'move'
@@ -223,6 +242,7 @@ export default function CustomPlaylistDetail({
             )
           })}
         </div>
+        </>
       )}
         </div>
 

@@ -1265,16 +1265,43 @@ a:hover {
   color: #ff8a80;
 }
 
-/* ---- 음량 조절 (우상단 고정) ---- */
-.volume-control {
+/* ---- 우상단 고정 컨트롤 묶음 (검색 · 음량 · 설정) ---- */
+.top-controls {
   position: fixed;
   top: 12px;
   right: 16px;
   z-index: 80;
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.top-icon-btn {
+  display: flex;
+  align-items: center;
   gap: 6px;
-  padding: 5px 10px 5px 6px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(22, 24, 29, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.top-icon-btn:hover {
+  color: var(--text);
+  border-color: var(--border-light);
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px 0 6px;
   background: rgba(22, 24, 29, 0.92);
   backdrop-filter: blur(8px);
   border: 1px solid var(--border);
@@ -1298,4 +1325,143 @@ a:hover {
   width: 88px;
   accent-color: var(--accent);
   height: 4px;
+}
+
+/* ---- 설정 패널 ---- */
+.settings-panel {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  z-index: 100;
+  width: 280px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.settings-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.settings-sep {
+  border-top: 1px solid var(--border);
+  margin: 12px 0 8px;
+}
+
+.settings-panel .menu-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---- 전역 검색 패널 ---- */
+.search-panel {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  z-index: 100;
+  width: min(440px, calc(100vw - 32px));
+  background: var(--panel-2);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.search-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.search-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.search-hint {
+  padding: 12px 4px 4px;
+}
+
+.search-results {
+  margin-top: 10px;
+  max-height: 55vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.search-group-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+  padding: 10px 6px 4px;
+}
+
+.search-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 8px;
+  border-radius: 8px;
+}
+
+.search-item:hover {
+  background: var(--panel);
+}
+
+.search-item-label {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* ---- 플리 내 검색 ---- */
+.filter-input {
+  display: block;
+  width: min(280px, 100%);
+  padding: 7px 11px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+/* ---- 사이드바 프로필 ---- */
+.profile-block {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-block .nav-label {
+  padding: 0 0 2px;
+}
+
+.welcome-text {
+  font-size: 15px;
+  letter-spacing: -0.2px;
+}
+
+.welcome-text b {
+  color: var(--accent);
 }
