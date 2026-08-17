@@ -3,6 +3,8 @@ import { getPlaylistTracks, getLikedTracks } from '../spotify.js'
 import { getIframeAPI } from '../spotify-embed.js'
 import LyricsPanel from './LyricsPanel.jsx'
 import { PlayIcon, ShuffleIcon, RepeatOneIcon } from './Icons.jsx'
+import { setNowPlaying, updateNowPlaying, clearNowPlaying, getNowPlaying } from '../nowPlaying.js'
+import { recordPlay } from '../stats.js'
 
 const formatDuration = (ms) => {
   const total = Math.round(ms / 1000)
@@ -93,7 +95,13 @@ export default function PlaylistDetail({ playlist, onBack }) {
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => () => controllerRef.current?.destroy?.(), [])
+  useEffect(
+    () => () => {
+      controllerRef.current?.destroy?.()
+      clearNowPlaying('spotify')
+    },
+    [],
+  )
 
   // 스페이스바 = 재생/일시정지 (입력창 타이핑 중이거나 커스텀 섹션이 이미 처리한 경우 제외)
   useEffect(() => {
@@ -125,6 +133,8 @@ export default function PlaylistDetail({ playlist, onBack }) {
                   const { position: pos, duration, isPaused: paused } = e.data
                   lastUpdate.current = { pos, at: performance.now(), paused }
                   setIsPaused(paused)
+                  if (getNowPlaying()?.source === 'spotify')
+                    updateNowPlaying({ isPlaying: !paused })
                   // 곡이 끝났을 때 처리 (방금 시작한 곡의 잔여 이벤트는 무시)
                   if (
                     duration > 0 &&
@@ -176,6 +186,22 @@ export default function PlaylistDetail({ playlist, onBack }) {
     lastPlayAt.current = performance.now()
     lastUpdate.current = { pos: 0, at: performance.now(), paused: false }
     setPosition(0)
+    const sub = track.artists?.map((a) => a.name).join(', ') || ''
+    setNowPlaying({
+      source: 'spotify',
+      playlistId: playlist.id,
+      title: track.name,
+      sub,
+      isPlaying: true,
+      detailVisible: true,
+      controls: {
+        toggle: () => controllerRef.current?.togglePlay?.(),
+        stop: () => {
+          if (getNowPlaying()?.isPlaying) controllerRef.current?.togglePlay?.()
+        },
+      },
+    })
+    recordPlay({ source: 'spotify', title: track.name, sub })
     const uri = `spotify:track:${track.id}`
     const controller = await ensureController(uri)
     controller.loadUri(uri)

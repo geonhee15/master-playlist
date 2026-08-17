@@ -11,6 +11,8 @@ import {
 } from '../youtube.js'
 import { getVolume, onVolumeChange } from '../volume.js'
 import { PlayIcon } from './Icons.jsx'
+import { setNowPlaying, updateNowPlaying, clearNowPlaying, getNowPlaying } from '../nowPlaying.js'
+import { recordPlay } from '../stats.js'
 
 function YtSetupCard({ onSaved }) {
   const [value, setValue] = useState(getApiKey())
@@ -84,6 +86,9 @@ function YtPlaylistDetail({ playlist, onBack }) {
   const mountRef = useRef(null)
   const playerRef = useRef(null)
   const playerPromise = useRef(null)
+  const lastIdxRef = useRef(-1)
+  const itemsRef = useRef(null)
+  itemsRef.current = items
 
   useEffect(() => {
     getPlaylistItems(playlist.id)
@@ -107,6 +112,11 @@ function YtPlaylistDetail({ playlist, onBack }) {
                   p.setVolume(Math.round(getVolume() * 100))
                   resolve(p)
                 },
+                onStateChange: (e) => {
+                  if (getNowPlaying()?.source !== 'youtube') return
+                  if (e.data === 1) updateNowPlaying({ isPlaying: true })
+                  else if (e.data === 2 || e.data === 0) updateNowPlaying({ isPlaying: false })
+                },
               },
             })
             playerRef.current = p
@@ -116,26 +126,77 @@ function YtPlaylistDetail({ playlist, onBack }) {
     return playerPromise.current
   }
 
+  const ytControls = () => ({
+    toggle: () => {
+      const p = playerRef.current
+      if (!p) return
+      if (p.getPlayerState?.() === 1) p.pauseVideo()
+      else p.playVideo()
+    },
+    stop: () => playerRef.current?.pauseVideo?.(),
+  })
+
+  const publishNowPlaying = (item) => {
+    if (!item) return
+    setNowPlaying({
+      source: 'youtube',
+      playlistId: playlist.id,
+      title: item.snippet?.title || '',
+      sub: item.snippet?.videoOwnerChannelTitle || '',
+      isPlaying: true,
+      detailVisible: true,
+      controls: ytControls(),
+    })
+    recordPlay({
+      source: 'youtube',
+      title: item.snippet?.title,
+      sub: item.snippet?.videoOwnerChannelTitle,
+    })
+  }
+
   const playIndex = async (index) => {
     setCurrentIndex(index)
+    lastIdxRef.current = index
+    publishNowPlaying(items?.[index])
     const player = await ensurePlayer()
     player.loadPlaylist({ listType: 'playlist', list: playlist.id, index })
     player.setLoop(true) // 마지막 영상이 끝나면 처음부터
   }
 
-  // 유튜브 플레이어가 자동으로 다음 영상으로 넘어가므로, 현재 인덱스를 폴링해서 하이라이트
+  // 유튜브 플레이어가 자동으로 다음 영상으로 넘어가므로, 현재 인덱스를 폴링해서
+  // 하이라이트·Now playing 정보를 갱신한다
   useEffect(() => {
     const id = setInterval(() => {
       const p = playerRef.current
       if (!p?.getPlaylistIndex) return
       const i = p.getPlaylistIndex()
-      if (typeof i === 'number' && i >= 0) setCurrentIndex((prev) => (prev === i ? prev : i))
+      if (typeof i !== 'number' || i < 0 || i === lastIdxRef.current) return
+      lastIdxRef.current = i
+      setCurrentIndex(i)
+      const item = itemsRef.current?.[i]
+      if (item && getNowPlaying()?.source === 'youtube') {
+        updateNowPlaying({
+          title: item.snippet?.title || '',
+          sub: item.snippet?.videoOwnerChannelTitle || '',
+        })
+        recordPlay({
+          source: 'youtube',
+          title: item.snippet?.title,
+          sub: item.snippet?.videoOwnerChannelTitle,
+        })
+      }
     }, 800)
     return () => clearInterval(id)
   }, [])
 
   useEffect(() => onVolumeChange((v) => playerRef.current?.setVolume?.(Math.round(v * 100))), [])
-  useEffect(() => () => playerRef.current?.destroy?.(), [])
+  useEffect(
+    () => () => {
+      playerRef.current?.destroy?.()
+      clearNowPlaying('youtube')
+    },
+    [],
+  )
 
   const thumb = playlist.snippet?.thumbnails?.medium?.url
 
@@ -251,6 +312,7 @@ export default function YouTubeSection() {
   const [ids, setIds] = useState(getSavedPlaylistIds())
   const [playlists, setPlaylists] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
+  const [detailHidden, setDetailHidden] = useState(false) // 뒤로 가도 재생 유지를 위해 숨김만
   const [addUrl, setAddUrl] = useState('')
   const [error, setError] = useState('')
 
@@ -268,12 +330,19 @@ export default function YouTubeSection() {
   // 전역 검색에서 유튜브 플리 클릭 → 해당 플리 열기
   useEffect(() => {
     const onNavigate = (e) => {
-      if (e.detail?.section !== 'youtube') return
+      if (e.detail?.section !== 'youtube' || !e.detail.playlistId) return
       setSelectedId(e.detail.playlistId)
+      setDetailHidden(false)
     }
     window.addEventListener('mp:navigate', onNavigate)
     return () => window.removeEventListener('mp:navigate', onNavigate)
   }, [])
+
+  // Now playing 위젯 표시 여부: 상세가 보이는 동안엔 위젯 숨김
+  useEffect(() => {
+    if (getNowPlaying()?.source === 'youtube')
+      updateNowPlaying({ detailVisible: !!selectedId && !detailHidden })
+  }, [selectedId, detailHidden])
 
   const addPlaylist = () => {
     const id = parsePlaylistId(addUrl)
@@ -313,17 +382,21 @@ export default function YouTubeSection() {
   }
 
   const selected = playlists?.find((p) => p.id === selectedId)
-  if (selected) {
-    return (
-      <section>
-        <h1 className="section-title">YouTube</h1>
-        <YtPlaylistDetail playlist={selected} onBack={() => setSelectedId(null)} />
-      </section>
-    )
-  }
 
+  // 상세는 재생 유지를 위해 뒤로 가도 언마운트하지 않고 숨긴다
   return (
     <section>
+      {selected && (
+        <div style={{ display: detailHidden ? 'none' : 'block' }}>
+          <h1 className="section-title">YouTube</h1>
+          <YtPlaylistDetail
+            key={selected.id}
+            playlist={selected}
+            onBack={() => setDetailHidden(true)}
+          />
+        </div>
+      )}
+      <div style={{ display: selected && !detailHidden ? 'none' : 'block' }}>
       <div className="section-head">
         <h1 className="section-title">YouTube</h1>
         <button className="btn small" onClick={() => setEditingKey(true)}>
@@ -360,7 +433,13 @@ export default function YouTubeSection() {
         <div className="grid">
           {playlists.map((p) => (
             <div className="card playlist-card yt-card" key={p.id}>
-              <button className="yt-card-body" onClick={() => setSelectedId(p.id)}>
+              <button
+                className="yt-card-body"
+                onClick={() => {
+                  setSelectedId(p.id)
+                  setDetailHidden(false)
+                }}
+              >
                 {p.snippet?.thumbnails?.medium?.url ? (
                   <img className="cover" src={p.snippet.thumbnails.medium.url} alt="" loading="lazy" />
                 ) : (
@@ -378,6 +457,7 @@ export default function YouTubeSection() {
           ))}
         </div>
       )}
+      </div>
     </section>
   )
 }

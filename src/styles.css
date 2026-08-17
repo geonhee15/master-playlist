@@ -1465,3 +1465,214 @@ a:hover {
 .welcome-text b {
   color: var(--accent);
 }
+
+/* ---- Now playing 미니 위젯 (왼쪽 아래) ---- */
+.now-playing-widget {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 70;
+  width: 216px;
+  background: var(--panel-2);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 10px 10px 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.np-info {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+.np-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+  margin-bottom: 3px;
+}
+
+.np-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.np-sub {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.np-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.np-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.np-btn:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* ---- 사이드바 프로필 버튼 ---- */
+button.profile-block {
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  width: 100%;
+}
+
+button.profile-block:hover {
+  border-color: var(--border-light);
+  background: var(--panel-2);
+}
+
+button.profile-block.active {
+  border-color: var(--accent);
+}
+
+/* ---- 대시보드 ---- */
+.dash-hero {
+  margin-bottom: 24px;
+}
+
+.dash-hero h1 {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.dash-nick {
+  color: var(--accent);
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.dash-card {
+  padding: 16px;
+}
+
+.dash-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.dash-card-value {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  margin-bottom: 2px;
+}
+
+.dash-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.dash-link.on {
+  color: var(--accent);
+}
+
+.dash-top h2 {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.dash-top-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-top-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 70px 46px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 6px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.dash-top-row:hover {
+  background: var(--panel-2);
+}
+
+.dash-rank {
+  font-weight: 800;
+  color: var(--accent);
+  text-align: center;
+}
+
+.dash-source {
+  font-size: 12px;
+  text-align: right;
+}
+
+.dash-count {
+  font-weight: 700;
+  text-align: right;
+  font-size: 13px;
+}
+
+/* ---- 쿠키/저장소 동의 배너 ---- */
+.consent-banner {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 16px;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(680px, calc(100vw - 32px));
+  background: var(--panel-2);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.consent-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.consent-text b {
+  color: var(--text);
+}
+
+.consent-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}

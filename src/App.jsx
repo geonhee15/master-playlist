@@ -6,7 +6,11 @@ import YouTubeSection from './components/YouTubeSection.jsx'
 import VolumeControl from './components/VolumeControl.jsx'
 import SettingsMenu from './components/SettingsMenu.jsx'
 import GlobalSearch from './components/GlobalSearch.jsx'
+import NowPlayingWidget from './components/NowPlayingWidget.jsx'
+import ConsentBanner from './components/ConsentBanner.jsx'
+import DashboardSection from './components/DashboardSection.jsx'
 import { exchangeCode } from './spotify.js'
+import { recordSectionVisit } from './stats.js'
 
 export default function App() {
   const [section, setSection] = useState('spotify')
@@ -44,6 +48,11 @@ export default function App() {
     return () => window.removeEventListener('mp:navigate', onNavigate)
   }, [])
 
+  // 섹션 방문 통계 (대시보드용)
+  useEffect(() => {
+    recordSectionVisit(section)
+  }, [section])
+
   if (booting) {
     return (
       <div className="boot-screen">
@@ -67,6 +76,7 @@ export default function App() {
         <div style={{ display: section === 'custom' ? 'block' : 'none' }}>
           <CustomSection />
         </div>
+        {section === 'dashboard' && <DashboardSection />}
       </main>
       {/* 우상단 고정: 검색 · 음량 · 설정 */}
       <div className="top-controls">
@@ -74,6 +84,8 @@ export default function App() {
         <VolumeControl />
         <SettingsMenu />
       </div>
+      <NowPlayingWidget section={section} />
+      <ConsentBanner />
     </div>
   )
 }

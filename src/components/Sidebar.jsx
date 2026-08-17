@@ -22,7 +22,11 @@ export default function Sidebar({ section, onSelect }) {
         </div>
       </div>
 
-      <div className="profile-block">
+      <button
+        className={`profile-block ${section === 'dashboard' ? 'active' : ''}`}
+        onClick={() => onSelect('dashboard')}
+        title="대시보드 열기"
+      >
         <div className="nav-label">My profile</div>
         <div className="welcome-text">
           Welcome{nickname ? (
@@ -35,7 +39,7 @@ export default function Sidebar({ section, onSelect }) {
           !
         </div>
         {!nickname && <div className="muted small-text">우상단 설정에서 닉네임을 정해보세요</div>}
-      </div>
+      </button>
 
       <nav className="nav">
         <div className="nav-label">섹션</div>

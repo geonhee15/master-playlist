@@ -16,12 +16,16 @@ import {
   supportsFolderPick,
   pickFolder,
   reconnectFolder,
+  autoReconnectFolder,
   scanFolder,
   isFolderConnected,
   folderName,
   hasSavedFolder,
   localFileUrl,
 } from '../localMedia.js'
+import { setNowPlaying, clearNowPlaying } from '../nowPlaying.js'
+import { recordPlay } from '../stats.js'
+import { allowsConvenience } from '../consent.js'
 import { getYouTubeAPI, parseVideoId } from '../youtube.js'
 import { getVolume, onVolumeChange } from '../volume.js'
 
@@ -139,6 +143,14 @@ export default function CustomSection() {
       setEnvMode('visitor')
       setLibrary(loadVisitorLibrary())
       setSavedFolder(await hasSavedFolder())
+      // 동의('모두 동의')한 경우, 브라우저가 권한을 기억하는 폴더는 자동 재연결
+      if (allowsConvenience()) {
+        const m = await autoReconnectFolder()
+        if (m) {
+          setMedia(m)
+          setFolderConnected(true)
+        }
+      }
     })()
   }, [])
 
@@ -366,6 +378,13 @@ export default function CustomSection() {
 
   // 트랙 목록에서 사용자가 직접 재생을 시작 (셔플이면 클릭한 곡부터 나머지를 섞는다)
   const playAt = (tracks, index, forceShuffle = shuffle) => {
+    const t = tracks[index]
+    if (t)
+      recordPlay({
+        source: 'custom',
+        title: t.title,
+        sub: [t.originalArtist, t.coverArtist && `커버: ${t.coverArtist}`].filter(Boolean).join(' · '),
+      })
     originalQueueRef.current = tracks
     if (forceShuffle) {
       const rest = tracks.filter((_, i) => i !== index)
@@ -465,6 +484,26 @@ export default function CustomSection() {
     }
   }
   handleEndedRef.current = handleEnded
+
+  // Now playing 위젯에 커스텀 재생 상태 공유 (다른 섹션에 있을 때 왼쪽 아래 미니 플레이어)
+  useEffect(() => {
+    if (currentTrack) {
+      setNowPlaying({
+        source: 'custom',
+        playlistId: selectedId || null,
+        title: currentTrack.title,
+        sub: [currentTrack.originalArtist, currentTrack.coverArtist && `커버: ${currentTrack.coverArtist}`]
+          .filter(Boolean)
+          .join(' · '),
+        isPlaying,
+        detailVisible: true, // 커스텀 독은 섹션 안 어디서나 보이므로 섹션 밖에서만 위젯 표시
+        controls: { toggle: togglePlay, stop },
+      })
+    } else {
+      clearNowPlaying('custom')
+    }
+    // eslint 없음 — togglePlay/stop은 렌더마다 새로 만들어져 최신 상태를 캡처한다
+  }, [currentTrack, isPlaying])
 
   // 전역 음량을 두 재생 엔진에 적용
   useEffect(() => {

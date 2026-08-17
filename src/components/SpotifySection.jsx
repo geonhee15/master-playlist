@@ -9,6 +9,7 @@ import {
   getMe,
   getAllPlaylists,
 } from '../spotify.js'
+import { getNowPlaying, updateNowPlaying } from '../nowPlaying.js'
 
 const LIKED = { id: '__liked__', name: '좋아요 표시한 곡', images: [] }
 
@@ -18,6 +19,7 @@ export default function SpotifySection({ authError, clearAuthError }) {
   const [me, setMe] = useState(null)
   const [playlists, setPlaylists] = useState(null)
   const [selected, setSelected] = useState(null)
+  const [detailHidden, setDetailHidden] = useState(false) // 뒤로 가도 재생 유지를 위해 숨김만
   const [error, setError] = useState('')
   const [editingSetup, setEditingSetup] = useState(false)
 
@@ -45,13 +47,22 @@ export default function SpotifySection({ authError, clearAuthError }) {
       if (e.detail?.section !== 'spotify') return
       setPlaylists((current) => {
         const target = current?.find((p) => p.id === e.detail.playlistId)
-        if (target) setSelected(target)
+        if (target) {
+          setSelected(target)
+          setDetailHidden(false)
+        }
         return current
       })
     }
     window.addEventListener('mp:navigate', onNavigate)
     return () => window.removeEventListener('mp:navigate', onNavigate)
   }, [])
+
+  // Now playing 위젯 표시 여부: 상세가 보이는 동안엔 위젯 숨김
+  useEffect(() => {
+    if (getNowPlaying()?.source === 'spotify')
+      updateNowPlaying({ detailVisible: !!selected && !detailHidden })
+  }, [selected, detailHidden])
 
   const disconnect = () => {
     logout()
@@ -105,19 +116,20 @@ export default function SpotifySection({ authError, clearAuthError }) {
     )
   }
 
-  // 3) 플레이리스트 상세
-  if (selected) {
-    return (
-      <section>
-        <h1 className="section-title">Spotify</h1>
-        <PlaylistDetail playlist={selected} onBack={() => setSelected(null)} />
-      </section>
-    )
-  }
-
-  // 4) 라이브러리 (플레이리스트 그리드)
+  // 3)+4) 상세는 재생 유지를 위해 뒤로 가도 언마운트하지 않고 숨긴다
   return (
     <section>
+      {selected && (
+        <div style={{ display: detailHidden ? 'none' : 'block' }}>
+          <h1 className="section-title">Spotify</h1>
+          <PlaylistDetail
+            key={selected.id}
+            playlist={selected}
+            onBack={() => setDetailHidden(true)}
+          />
+        </div>
+      )}
+      <div style={{ display: selected && !detailHidden ? 'none' : 'block' }}>
       <div className="section-head">
         <h1 className="section-title">Spotify</h1>
         <div className="profile-chip">
@@ -149,13 +161,13 @@ export default function SpotifySection({ authError, clearAuthError }) {
         </div>
       ) : (
         <div className="grid">
-          <button className="card playlist-card liked" onClick={() => setSelected(LIKED)}>
+          <button className="card playlist-card liked" onClick={() => { setSelected(LIKED); setDetailHidden(false) }}>
             <div className="cover placeholder liked-cover">♥</div>
             <div className="playlist-name">좋아요 표시한 곡</div>
             <div className="muted small-text">내 라이브러리</div>
           </button>
           {playlists.map((p) => (
-            <button className="card playlist-card" key={p.id} onClick={() => setSelected(p)}>
+            <button className="card playlist-card" key={p.id} onClick={() => { setSelected(p); setDetailHidden(false) }}>
               {p.images?.[0]?.url ? (
                 <img className="cover" src={p.images[0].url} alt="" loading="lazy" />
               ) : (
@@ -175,6 +187,7 @@ export default function SpotifySection({ authError, clearAuthError }) {
           ))}
         </div>
       )}
+      </div>
     </section>
   )
 }

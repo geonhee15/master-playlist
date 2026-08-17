@@ -58,6 +58,20 @@ export async function pickFolder() {
   return scanFolder()
 }
 
+// 페이지 로드 시 자동 재연결 — 브라우저가 권한을 기억하고 있을 때만 (제스처 불필요)
+export async function autoReconnectFolder() {
+  try {
+    const handle = await loadHandle()
+    if (!handle) return null
+    const perm = await handle.queryPermission({ mode: 'read' })
+    if (perm !== 'granted') return null
+    dirHandle = handle
+    return await scanFolder()
+  } catch {
+    return null
+  }
+}
+
 // 저장해둔 폴더 재연결 (권한 재요청은 사용자 클릭 안에서 호출해야 함)
 export async function reconnectFolder() {
   const handle = await loadHandle()

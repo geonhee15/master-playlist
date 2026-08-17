@@ -1,0 +1,34 @@
+// 전역 "Now playing" 상태 — 어느 섹션에서 재생 중이든 왼쪽 아래 위젯이 구독한다
+// state: { source: 'spotify'|'youtube'|'custom', playlistId, title, sub,
+//          isPlaying, detailVisible, controls: { toggle, stop } } | null
+let state = null
+
+const listeners = new Set()
+const emit = () => {
+  for (const fn of listeners) fn(state)
+}
+
+export const getNowPlaying = () => state
+
+export const setNowPlaying = (next) => {
+  state = next
+  emit()
+}
+
+export const updateNowPlaying = (partial) => {
+  if (!state) return
+  state = { ...state, ...partial }
+  emit()
+}
+
+// source를 주면 그 소스일 때만 지운다 (다른 소스가 이미 덮어썼으면 유지)
+export const clearNowPlaying = (source) => {
+  if (source && state?.source !== source) return
+  state = null
+  emit()
+}
+
+export const onNowPlayingChange = (fn) => {
+  listeners.add(fn)
+  return () => listeners.delete(fn)
+}
