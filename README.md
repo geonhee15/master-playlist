@@ -16,6 +16,7 @@ npm run dev
 - **Spotify** — 내 Spotify 플레이리스트 + 좋아요 표시한 곡을 그대로 가져와서 보기.
   처음 한 번만 [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)에서
   앱을 만들고 Client ID를 입력하면 됨 (화면에 단계별 안내 있음).
+  **개발자 앱 생성은 Spotify 프리미엄 구독 계정만 가능** (베이직/학생 등 가장 저렴한 플랜이면 충분).
   - Redirect URI: `http://127.0.0.1:5173/callback`
   - 인증 방식: Authorization Code + PKCE (서버·시크릿 불필요, 토큰 자동 갱신)
   - Spotify가 직접 만든 플레이리스트(Discover Weekly 등)는 정책상 트랙 목록 API가 막혀 있음
@@ -52,10 +53,12 @@ npm run dev
 
 배포 환경 동작 방식:
 
-- 플리 데이터는 커밋된 `data/library.json`이 정적 `/api/library`로 서빙됨 (빌드 시 복사).
-  **편집은 로컬에서만** 가능 — 로컬에서 고치고 커밋/푸시하면 사이트에 반영
-- `functions/api/`의 Pages Functions가 가사(LRCLIB)와 Spotify 트랙 우회를 배포 환경에서도 제공
-- `public/media/`의 파일은 배포되지 않음 — 공개 사이트에서 재생할 곡은 **유튜브 링크**로 등록
+- 배포는 **Cloudflare Worker(정적 에셋)** 방식 — `wrangler.jsonc` + `worker/index.js`가
+  `/api/lyrics`(가사)와 `/api/playlist-tracks`(Spotify 우회)를 처리하고 나머지는 정적 서빙
+- **커스텀 섹션은 방문자 모드**: 개인 라이브러리(`data/`)와 미디어는 배포에 포함되지 않고,
+  방문자는 자기 컴퓨터의 폴더를 선택(File System Access API)해 자기만의 플리를 만든다
+  (localStorage 저장, 파일 업로드 없음). 주인의 플리는 로컬 개발 서버에서만 보임
+- 가사는 프록시가 없어도 브라우저에서 LRCLIB로 직접 폴백
 
 ## 구글 로그인 (Cloudflare Access)
 
@@ -76,9 +79,10 @@ npm run dev
 ## 구조
 
 ```
-data/library.json          # 커스텀 섹션 데이터 (커밋됨 — 배포에 포함)
+data/library.json          # 커스텀 섹션 데이터 (로컬 전용, 커밋 안 됨)
 public/media/              # 커스텀 섹션 미디어 파일 넣는 곳 (커밋 안 됨)
-functions/api/             # Cloudflare Pages Functions (배포용 가사/Spotify 프록시)
+wrangler.jsonc, worker/    # Cloudflare Workers 배포 (정적 에셋 + API 프록시)
+functions/api/             # Pages 방식으로 배포할 경우용 동일 프록시
 server/
   library-plugin.js        # 로컬 API (라이브러리 저장/파일 목록/미디어 스트리밍)
 src/

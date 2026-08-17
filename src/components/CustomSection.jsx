@@ -8,7 +8,20 @@ import {
   listMedia,
   mediaUrl,
   openMediaFolder,
+  setVisitorMediaResolver,
+  loadVisitorLibrary,
+  saveVisitorLibrary,
 } from '../library.js'
+import {
+  supportsFolderPick,
+  pickFolder,
+  reconnectFolder,
+  scanFolder,
+  isFolderConnected,
+  folderName,
+  hasSavedFolder,
+  localFileUrl,
+} from '../localMedia.js'
 import { getYouTubeAPI, parseVideoId } from '../youtube.js'
 import { getVolume, onVolumeChange } from '../volume.js'
 
@@ -16,7 +29,7 @@ import { getVolume, onVolumeChange } from '../volume.js'
 const trackYouTubeId = (track) =>
   track && !track.audioFile && !track.videoFile ? parseVideoId(track.youtubeUrl) : null
 
-function PlaylistForm({ initial, media, onRefreshMedia, onSubmit, onCancel }) {
+function PlaylistForm({ initial, media, onRefreshMedia, onOpenFolder, onSubmit, onCancel }) {
   const [name, setName] = useState(initial?.name || '')
   const [description, setDescription] = useState(initial?.description || '')
   const [cover, setCover] = useState(initial?.cover || '')
@@ -61,14 +74,14 @@ function PlaylistForm({ initial, media, onRefreshMedia, onSubmit, onCancel }) {
           <button className="btn small" onClick={onRefreshMedia}>
             새로고침
           </button>
-          <button className="btn small" onClick={openMediaFolder}>
+          <button className="btn small" onClick={onOpenFolder}>
             폴더 열기
           </button>
         </div>
         {cover && <img className="cover-preview" src={mediaUrl(cover)} alt="" />}
       </label>
       <p className="hint" style={{ marginTop: 0 }}>
-        커버로 쓸 이미지(jpg, png, webp …)도 <code>public/media</code> 폴더에 넣으면 목록에 떠요.
+        커버로 쓸 이미지(jpg, png, webp …)도 미디어 폴더에 넣으면 목록에 떠요.
       </p>
       <div className="form-actions">
         <button
@@ -101,36 +114,92 @@ export default function CustomSection() {
   const [editingPlaylist, setEditingPlaylist] = useState(null) // null | 'new' | playlist
   const [error, setError] = useState('')
 
+  // 환경 감지: 로컬 개발 서버(내 라이브러리+public/media)냐, 배포 사이트 방문(자기 폴더 선택)이냐
+  const [envMode, setEnvMode] = useState('detecting') // 'detecting' | 'local' | 'visitor'
+  const [folderConnected, setFolderConnected] = useState(false)
+  const [savedFolder, setSavedFolder] = useState(false)
+
   useEffect(() => {
-    loadLibrary()
-      .then(setLibrary)
-      .catch((e) => setError(e.message))
-    refreshMedia()
+    ;(async () => {
+      try {
+        const res = await fetch('/api/media')
+        const type = res.headers.get('content-type') || ''
+        if (res.ok && type.includes('json')) {
+          setEnvMode('local')
+          setMedia(await res.json())
+          loadLibrary()
+            .then(setLibrary)
+            .catch((e) => setError(e.message))
+          return
+        }
+      } catch {
+        /* 로컬 API 없음 → 방문자 모드 */
+      }
+      setVisitorMediaResolver(localFileUrl)
+      setEnvMode('visitor')
+      setLibrary(loadVisitorLibrary())
+      setSavedFolder(await hasSavedFolder())
+    })()
   }, [])
 
-  const refreshMedia = () => listMedia().then(setMedia).catch(() => {})
+  const refreshMedia = () => {
+    if (envMode === 'visitor') {
+      if (isFolderConnected()) scanFolder().then((m) => m && setMedia(m))
+      return
+    }
+    listMedia().then(setMedia).catch(() => {})
+  }
+
+  // 방문자 모드: 폴더 선택/재연결 (사용자 클릭 안에서 호출되어야 함)
+  const connectFolder = async (reconnect) => {
+    try {
+      const m = reconnect ? await reconnectFolder() : await pickFolder()
+      if (m) {
+        setMedia(m)
+        setFolderConnected(true)
+        setSavedFolder(true)
+      }
+    } catch {
+      /* 사용자가 선택 취소 */
+    }
+  }
+
+  const openFolder = () => {
+    if (envMode === 'visitor') connectFolder(false)
+    else openMediaFolder()
+  }
 
   // 플리 단위로 저장 — 탭이 여러 개 열려 있어도 서로의 다른 플리를 덮어쓰지 않는다.
-  // 서버가 최신 전체 라이브러리를 돌려주므로 다른 탭의 변경도 함께 반영된다.
+  // 방문자 모드에서는 이 브라우저의 localStorage에만 저장된다.
   const upsertPlaylist = (pl) => {
     const exists = library.playlists.some((p) => p.id === pl.id)
-    setLibrary({
+    const updated = {
       ...library,
       playlists: exists
         ? library.playlists.map((p) => (p.id === pl.id ? pl : p))
         : [...library.playlists, pl],
-    })
+    }
+    setLibrary(updated)
+    if (envMode === 'visitor') {
+      saveVisitorLibrary(updated)
+      return
+    }
     savePlaylist(pl)
       .then(setLibrary)
-      .catch(() => setError('저장 실패 — 플리 편집은 로컬(개발 서버)에서만 할 수 있어요'))
+      .catch(() => setError('저장 실패 — 개발 서버가 실행 중인지 확인하세요'))
   }
 
   const deletePlaylist = (id) => {
-    setLibrary({ ...library, playlists: library.playlists.filter((p) => p.id !== id) })
+    const updated = { ...library, playlists: library.playlists.filter((p) => p.id !== id) }
+    setLibrary(updated)
     if (selectedId === id) setSelectedId(null)
+    if (envMode === 'visitor') {
+      saveVisitorLibrary(updated)
+      return
+    }
     deletePlaylistById(id)
       .then(setLibrary)
-      .catch(() => setError('삭제 실패 — 플리 편집은 로컬(개발 서버)에서만 할 수 있어요'))
+      .catch(() => setError('삭제 실패 — 개발 서버가 실행 중인지 확인하세요'))
   }
 
   const selected = library?.playlists.find((p) => p.id === selectedId)
@@ -427,6 +496,7 @@ export default function CustomSection() {
             initial={editingPlaylist === 'new' ? null : editingPlaylist}
             media={media}
             onRefreshMedia={refreshMedia}
+            onOpenFolder={openFolder}
             onSubmit={(pl) => {
               upsertPlaylist(pl)
               setEditingPlaylist(null)
@@ -439,6 +509,8 @@ export default function CustomSection() {
           playlist={selected}
           media={media}
           refreshMedia={refreshMedia}
+          envMode={envMode}
+          onOpenFolder={openFolder}
           onBack={() => setSelectedId(null)}
           onChange={upsertPlaylist}
           onEditPlaylist={() => setEditingPlaylist(selected)}
@@ -465,14 +537,55 @@ export default function CustomSection() {
         <>
           <div className="section-head">
             <h1 className="section-title">커스텀</h1>
-            <button className="btn primary" onClick={() => setEditingPlaylist('new')}>
-              + 새 플레이리스트
-            </button>
+            <div className="head-actions">
+              {envMode === 'visitor' && folderConnected && (
+                <button className="btn small" onClick={() => connectFolder(false)} title="폴더 변경">
+                  폴더: {folderName()}
+                </button>
+              )}
+              <button className="btn primary" onClick={() => setEditingPlaylist('new')}>
+                + 새 플레이리스트
+              </button>
+            </div>
           </div>
           <p className="muted section-desc">
-            커버곡 · 밈 · 비공식 음원 모음. 파일을 <code>public/media</code> 폴더에 넣고 플리를
-            만들어보세요.
+            {envMode === 'visitor' ? (
+              <>커버곡 · 밈 · 비공식 음원을 내 컴퓨터의 파일이나 유튜브 링크로 모아두는 공간이에요.</>
+            ) : (
+              <>
+                커버곡 · 밈 · 비공식 음원 모음. 파일을 <code>public/media</code> 폴더에 넣고 플리를
+                만들어보세요.
+              </>
+            )}
           </p>
+
+          {envMode === 'visitor' && !folderConnected && (
+            <div className="card connect-card" style={{ marginBottom: 20 }}>
+              <h2>내 컴퓨터의 음악으로 시작하기</h2>
+              <p className="muted">
+                음악/영상이 들어있는 폴더를 선택하면 그 파일들로 나만의 플리를 만들 수 있어요.
+                파일은 어디에도 업로드되지 않고 이 브라우저에서만 재생되며, 플리는 이 브라우저에
+                저장됩니다. 유튜브 링크 곡은 폴더 없이도 추가할 수 있어요.
+              </p>
+              {supportsFolderPick() ? (
+                <div className="connect-actions">
+                  <button className="btn primary" onClick={() => connectFolder(false)}>
+                    음악 폴더 선택
+                  </button>
+                  {savedFolder && (
+                    <button className="btn" onClick={() => connectFolder(true)}>
+                      이전 폴더 다시 연결
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="hint">
+                  이 브라우저는 폴더 선택을 지원하지 않아요 — Chrome/Edge에서 열어주세요. 유튜브
+                  링크 곡은 지금도 추가할 수 있습니다.
+                </p>
+              )}
+            </div>
+          )}
 
           {error && <div className="error-box">{error}</div>}
 

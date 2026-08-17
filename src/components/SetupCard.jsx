@@ -24,6 +24,10 @@ export default function SetupCard({ onSaved }) {
       <p className="muted">
         내 플레이리스트를 불러오려면 Spotify 개발자 앱이 하나 필요해요. 한 번만 하면 됩니다 (약 2분).
       </p>
+      <p className="hint" style={{ marginTop: 6 }}>
+        <b>먼저 확인:</b> 개발자 앱(키) 생성은 <b>Spotify 프리미엄 구독 계정</b>만 가능해요.
+        프리미엄 베이직/학생 등 제일 저렴한 플랜이면 충분합니다.
+      </p>
 
       <ol className="steps">
         <li>

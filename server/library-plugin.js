@@ -163,17 +163,6 @@ async function fetchLyrics(q) {
 export default function libraryPlugin() {
   return {
     name: 'master-playlist-library',
-    // 배포 빌드에 라이브러리 데이터 포함 — 정적 /api/library 파일로 서빙된다
-    closeBundle() {
-      try {
-        if (!fs.existsSync(DATA_FILE)) return
-        const outDir = path.join(ROOT, 'dist', 'api')
-        fs.mkdirSync(outDir, { recursive: true })
-        fs.copyFileSync(DATA_FILE, path.join(outDir, 'library'))
-      } catch {
-        /* 빌드 환경에 데이터가 없으면 건너뜀 */
-      }
-    },
     configureServer(server) {
       fs.mkdirSync(MEDIA_DIR, { recursive: true })
       fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true })

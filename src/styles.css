@@ -58,7 +58,8 @@ a:hover {
 .main {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 40px 60px;
+  /* 상단 여백은 우상단 고정 음량 슬라이더와 겹치지 않게 확보 */
+  padding: 58px 40px 60px;
 }
 
 /* ---- 사이드바 ---- */
@@ -170,6 +171,12 @@ a:hover {
 
 .section-head .profile-chip {
   margin-bottom: 0;
+}
+
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .section-desc {

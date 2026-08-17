@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { openMediaFolder } from '../library.js'
 import { parseVideoId } from '../youtube.js'
 
-export default function TrackForm({ initial, media, onRefresh, onSubmit, onCancel }) {
+export default function TrackForm({ initial, media, onRefresh, onOpenFolder, envMode, onSubmit, onCancel }) {
   const [f, setF] = useState({
     title: initial?.title || '',
     originalArtist: initial?.originalArtist || '',
@@ -26,13 +25,19 @@ export default function TrackForm({ initial, media, onRefresh, onSubmit, onCance
           <button className="btn small" onClick={onRefresh}>
             파일 목록 새로고침
           </button>
-          <button className="btn small" onClick={openMediaFolder}>
-            미디어 폴더 열기
+          <button className="btn small" onClick={onOpenFolder}>
+            {envMode === 'visitor' ? '폴더 선택/변경' : '미디어 폴더 열기'}
           </button>
         </div>
       </div>
       <p className="hint">
-        음악/영상 파일을 <code>public/media</code> 폴더에 넣은 뒤 아래에서 선택하세요.
+        {envMode === 'visitor' ? (
+          <>선택한 폴더의 음악/영상 파일이 아래 목록에 떠요. 유튜브 링크만으로도 추가할 수 있어요.</>
+        ) : (
+          <>
+            음악/영상 파일을 <code>public/media</code> 폴더에 넣은 뒤 아래에서 선택하세요.
+          </>
+        )}
       </p>
 
       <div className="form-grid">

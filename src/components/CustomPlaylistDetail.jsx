@@ -8,6 +8,8 @@ export default function CustomPlaylistDetail({
   playlist,
   media,
   refreshMedia,
+  envMode,
+  onOpenFolder,
   onBack,
   onChange,
   onEditPlaylist,
@@ -99,6 +101,8 @@ export default function CustomPlaylistDetail({
           initial={trackForm === 'new' ? null : trackForm}
           media={media}
           onRefresh={refreshMedia}
+          onOpenFolder={onOpenFolder}
+          envMode={envMode}
           onSubmit={submitTrack}
           onCancel={() => setTrackForm(null)}
         />

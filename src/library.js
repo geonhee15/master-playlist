@@ -1,4 +1,20 @@
 // 커스텀 섹션 — 로컬 라이브러리 API 클라이언트
+// 방문자 모드(배포 사이트)에서는 선택한 폴더의 object URL과 localStorage 라이브러리를 쓴다.
+
+let visitorMediaResolver = null
+export const setVisitorMediaResolver = (fn) => {
+  visitorMediaResolver = fn
+}
+
+export const loadVisitorLibrary = () => {
+  try {
+    return JSON.parse(localStorage.getItem('mp_visitor_library')) || { playlists: [] }
+  } catch {
+    return { playlists: [] }
+  }
+}
+export const saveVisitorLibrary = (library) =>
+  localStorage.setItem('mp_visitor_library', JSON.stringify(library))
 
 export async function loadLibrary() {
   const res = await fetch('/api/library')
@@ -46,4 +62,5 @@ export function openMediaFolder() {
   fetch('/api/open-folder', { method: 'POST' }).catch(() => {})
 }
 
-export const mediaUrl = (file) => `/media/${encodeURIComponent(file)}`
+export const mediaUrl = (file) =>
+  visitorMediaResolver ? visitorMediaResolver(file) : `/media/${encodeURIComponent(file)}`
