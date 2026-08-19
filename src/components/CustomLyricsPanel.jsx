@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { parseLrc, showSingerLabel } from './LyricsPanel.jsx'
+import { parseLyrics, showSingerLabel } from './LyricsPanel.jsx'
 
 // 커스텀 섹션용 가사 패널 — 직접 입력한 가사를 표시.
 // LRC 타임스탬프가 있으면 재생 시간에 맞춰 하이라이트/자동 스크롤, 없으면 일반 텍스트.
@@ -12,8 +12,15 @@ export default function CustomLyricsPanel({ track, time, onSeek, maxLines = 7 })
   const markManual = () => {
     manualAtRef.current = Date.now()
   }
-  const lines = track?.lyrics ? parseLrc(track.lyrics) : []
+  const { lines, adlibs } = track?.lyrics ? parseLyrics(track.lyrics) : { lines: [], adlibs: [] }
   const synced = lines.length > 0
+
+  // 현재 시점의 추임새 (지나간 지 4초 이내인 가장 최근 것)
+  let activeAdlib = null
+  for (const a of adlibs) {
+    if (a.time > time + 0.25) break
+    if (time - a.time < 4) activeAdlib = a
+  }
 
   let active = -1
   if (synced) {
@@ -37,6 +44,7 @@ export default function CustomLyricsPanel({ track, time, onSeek, maxLines = 7 })
   }, [active])
 
   return (
+    <>
     <div className="lyrics-panel">
       <div className="lyrics-head">
         <h3>가사</h3>
@@ -90,5 +98,22 @@ export default function CustomLyricsPanel({ track, time, onSeek, maxLines = 7 })
         </div>
       )}
     </div>
+
+    {/* 추임새 패널 — *[mm:ss.xx] 문법으로 넣은 애드립이 타이밍에 맞춰 뜬다 */}
+    {adlibs.length > 0 && (
+      <div className="adlib-panel">
+        <div className="adlib-label">추임새</div>
+        <div
+          className={`adlib-text ${activeAdlib ? 'on' : ''}`}
+          key={activeAdlib ? activeAdlib.time : 'idle'}
+        >
+          {activeAdlib ? activeAdlib.text : '· · ·'}
+        </div>
+        {activeAdlib?.singer && (
+          <div className="adlib-singer muted small-text">{activeAdlib.singer}</div>
+        )}
+      </div>
+    )}
+    </>
   )
 }

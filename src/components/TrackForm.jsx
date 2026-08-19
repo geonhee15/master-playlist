@@ -121,7 +121,8 @@ export default function TrackForm({ initial, media, onRefresh, onOpenFolder, env
           placeholder={
             '가사를 붙여넣으세요. 재생 중 옆 패널에 표시돼요.\n' +
             '[mm:ss.xx] 타임스탬프(LRC 형식)를 붙이면 노래에 맞춰 자동 하이라이트됩니다.\n' +
-            '##가수이름 줄을 넣으면 다음 ##가 나올 때까지 그 가수가 부르는 파트로 표시돼요.'
+            '##가수이름 줄을 넣으면 다음 ##가 나올 때까지 그 가수가 부르는 파트로 표시돼요.\n' +
+            '*[mm:ss.xx] 오! 처럼 줄 앞에 *를 붙이면 추임새 — 본 가사 대신 추임새 패널에 떠요.'
           }
         />
       </label>

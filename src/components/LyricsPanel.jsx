@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 
-// LRC 형식("[mm:ss.xx] 가사") 파싱 → [{time, text, singer}]
-// "##가수이름" 줄이 나오면 다음 ##가 나올 때까지 그 아래 가사들의 singer로 붙는다.
-export function parseLrc(lrc) {
+// LRC 형식("[mm:ss.xx] 가사") 파싱 → { lines, adlibs }
+// - "##가수이름" 줄: 다음 ##가 나올 때까지 그 아래 가사들의 singer로 붙는다
+// - 줄 맨 앞에 "*"가 붙으면 추임새("오!", "예~") — 본 가사가 아니라 추임새 패널에 표시
+export function parseLyrics(lrc) {
   const lines = []
+  const adlibs = []
   let singer = null
   for (const raw of lrc.split('\n')) {
     const singerMatch = raw.match(/^##\s*(.+?)\s*$/)
@@ -11,12 +13,22 @@ export function parseLrc(lrc) {
       singer = singerMatch[1]
       continue
     }
-    const stamps = [...raw.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)]
+    const isAdlib = /^\s*\*/.test(raw)
+    const content = isAdlib ? raw.replace(/^\s*\*\s*/, '') : raw
+    const stamps = [...content.matchAll(/\[(\d+):(\d+(?:\.\d+)?)\]/g)]
     if (!stamps.length) continue
-    const text = raw.replace(/\[\d+:\d+(?:\.\d+)?\]/g, '').trim()
-    for (const s of stamps) lines.push({ time: Number(s[1]) * 60 + parseFloat(s[2]), text, singer })
+    const text = content.replace(/\[\d+:\d+(?:\.\d+)?\]/g, '').trim()
+    const target = isAdlib ? adlibs : lines
+    for (const s of stamps) target.push({ time: Number(s[1]) * 60 + parseFloat(s[2]), text, singer })
   }
-  return lines.sort((a, b) => a.time - b.time)
+  lines.sort((a, b) => a.time - b.time)
+  adlibs.sort((a, b) => a.time - b.time)
+  return { lines, adlibs }
+}
+
+// 기존 호출부 호환용 — 본 가사 줄만
+export function parseLrc(lrc) {
+  return parseLyrics(lrc).lines
 }
 
 // i번째 줄 위에 가수 라벨을 보여줘야 하는지 (가수 블록의 첫 줄에만)
