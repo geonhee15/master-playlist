@@ -1,11 +1,11 @@
-// Firebase 프로젝트 설정 — console.firebase.google.com → 프로젝트 설정(⚙) → 일반 → 내 앱(웹)의
-// firebaseConfig 값을 여기에 붙여넣으면 사이트에 로그인 게이트가 켜진다.
-// 비워두면 로그인 없이 동작한다. (apiKey는 공개되어도 되는 클라이언트 식별자)
+// Firebase 프로젝트 설정 — 로그인 게이트에 사용 (apiKey는 공개용 클라이언트 식별자)
 export const firebaseConfig = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  appId: '',
+  apiKey: 'AIzaSyA_S3sBl-Ax60UJ9h__To8UwcimuZhOqpU',
+  authDomain: 'master-playlist-c094a.firebaseapp.com',
+  projectId: 'master-playlist-c094a',
+  storageBucket: 'master-playlist-c094a.firebasestorage.app',
+  messagingSenderId: '220352259869',
+  appId: '1:220352259869:web:30b3e3a8df2cec9490e3f4',
 }
 
 export const hasAuthConfig = () => !!firebaseConfig.apiKey
