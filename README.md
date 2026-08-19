@@ -80,15 +80,17 @@ npm run dev
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
-       match /users/{uid} {
+       match /users/{uid}/{document=**} {
          allow read, write: if request.auth != null && request.auth.uid == uid;
        }
      }
    }
    ```
 
-   동기화 대상: 닉네임, Spotify Client ID, YouTube API 키·추가한 플리 목록.
-   Spotify 재생 연결(토큰)은 기기마다 "연결하기" 한 번씩 필요 (토큰 회전 문제로 비동기화)
+   동기화 대상: 닉네임, Spotify Client ID, YouTube API 키·추가한 플리 목록,
+   **커스텀 플레이리스트 전체**(users/{uid}/playlists — 최신 updatedAt 우선 병합, 삭제는 톰스톤).
+   Spotify 재생 연결(토큰)은 기기마다 "연결하기" 한 번씩 필요 (토큰 회전 문제로 비동기화).
+   커스텀 곡의 파일 재생은 그 기기에 같은 파일이 있어야 하고(폴더 연결), 유튜브 곡은 어디서나 재생됨
 
 (기존 Cloudflare Access 게이트를 쓰고 있었다면 Zero Trust에서 앱을 삭제해 이중 로그인을 피한다)
 

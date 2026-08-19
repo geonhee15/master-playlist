@@ -3,6 +3,7 @@ import CustomPlaylistDetail from './CustomPlaylistDetail.jsx'
 import PlayerDock from './PlayerDock.jsx'
 import {
   loadLibrary,
+  saveLibrary,
   savePlaylist,
   deletePlaylistById,
   listMedia,
@@ -26,6 +27,12 @@ import {
 import { setNowPlaying, clearNowPlaying } from '../nowPlaying.js'
 import { recordPlay } from '../stats.js'
 import { allowsConvenience } from '../consent.js'
+import {
+  getSyncUid,
+  fetchCloudPlaylists,
+  pushCloudPlaylist,
+  markCloudDeleted,
+} from '../sync.js'
 import { getYouTubeAPI, parseVideoId } from '../youtube.js'
 import { getVolume, onVolumeChange } from '../volume.js'
 
@@ -162,6 +169,56 @@ export default function CustomSection() {
     listMedia().then(setMedia).catch(() => {})
   }
 
+  // 계정(Firestore)의 커스텀 플리와 병합 — 어느 기기서 수정했든 최신본(updatedAt)이 이긴다
+  const envModeRef = useRef(envMode)
+  envModeRef.current = envMode
+  const libraryRef = useRef(library)
+  libraryRef.current = library
+  const mergedRef = useRef(false)
+
+  useEffect(() => {
+    const mergeWithCloud = async () => {
+      const lib = libraryRef.current
+      if (mergedRef.current || !lib || !getSyncUid()) return
+      const cloud = await fetchCloudPlaylists()
+      if (!cloud) return // Firestore 미활성/오류 → 로컬 전용
+      mergedRef.current = true
+
+      const result = new Map(lib.playlists.map((p) => [p.id, p]))
+      const cloudMap = new Map(cloud.map((c) => [c.id, c]))
+      for (const c of cloud) {
+        const local = result.get(c.id)
+        const cloudTime = c.updatedAt || 0
+        const localTime = local?.updatedAt || 0
+        if (c.deleted) {
+          if (local && cloudTime >= localTime) result.delete(c.id)
+          continue
+        }
+        if (!local || cloudTime > localTime) {
+          const { deleted, ...pl } = c
+          result.set(c.id, pl)
+        }
+      }
+      // 이 기기에만 있거나 더 최신인 플리는 계정으로 업로드
+      for (const p of result.values()) {
+        const c = cloudMap.get(p.id)
+        if (!c || (p.updatedAt || 0) > (c.updatedAt || 0)) {
+          pushCloudPlaylist({ ...p, updatedAt: p.updatedAt || Date.now() })
+        }
+      }
+
+      const merged = { ...lib, playlists: [...result.values()] }
+      setLibrary(merged)
+      if (envModeRef.current === 'visitor') saveVisitorLibrary(merged)
+      else saveLibrary(merged).catch(() => {})
+    }
+
+    // 라이브러리와 로그인 둘 다 준비되면 병합 (어느 쪽이 먼저든)
+    mergeWithCloud()
+    window.addEventListener('mp:sync-user', mergeWithCloud)
+    return () => window.removeEventListener('mp:sync-user', mergeWithCloud)
+  }, [library, envMode])
+
   // 방문자 모드: 폴더 선택/재연결 (사용자 클릭 안에서 호출되어야 함)
   const connectFolder = async (reconnect) => {
     try {
@@ -221,8 +278,9 @@ export default function CustomSection() {
   }
 
   // 플리 단위로 저장 — 탭이 여러 개 열려 있어도 서로의 다른 플리를 덮어쓰지 않는다.
-  // 방문자 모드에서는 이 브라우저의 localStorage에만 저장된다.
-  const upsertPlaylist = (pl) => {
+  // 방문자 모드에서는 localStorage, 로그인돼 있으면 계정(Firestore)에도 함께 저장된다.
+  const upsertPlaylist = (raw) => {
+    const pl = { ...raw, updatedAt: Date.now() }
     const exists = library.playlists.some((p) => p.id === pl.id)
     const updated = {
       ...library,
@@ -231,6 +289,7 @@ export default function CustomSection() {
         : [...library.playlists, pl],
     }
     setLibrary(updated)
+    pushCloudPlaylist(pl) // 계정 동기화 (로그인·Firestore 준비 시)
     if (envMode === 'visitor') {
       saveVisitorLibrary(updated)
       return
@@ -244,6 +303,7 @@ export default function CustomSection() {
     const updated = { ...library, playlists: library.playlists.filter((p) => p.id !== id) }
     setLibrary(updated)
     if (selectedId === id) setSelectedId(null)
+    markCloudDeleted(id) // 계정 동기화: 다른 기기에서도 삭제되도록 표시
     if (envMode === 'visitor') {
       saveVisitorLibrary(updated)
       return
