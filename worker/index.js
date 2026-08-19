@@ -71,11 +71,75 @@ async function playlistTracksHandler(url) {
   }
 }
 
+// ---- R2 클라우드 미디어 (mp3/mp4 등을 어느 기기서나 재생) ----
+const AUDIO_EXT = ['.mp3', '.m4a', '.wav', '.ogg', '.flac', '.aac', '.opus', '.aiff']
+const VIDEO_EXT = ['.mp4', '.webm', '.mov', '.m4v', '.mkv']
+const IMAGE_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif']
+const MIME = {
+  '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
+  '.flac': 'audio/flac', '.aac': 'audio/aac', '.opus': 'audio/ogg', '.aiff': 'audio/aiff',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
+  '.m4v': 'video/x-m4v', '.mkv': 'video/x-matroska',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+  '.webp': 'image/webp', '.gif': 'image/gif', '.avif': 'image/avif',
+}
+const extOf = (name) => name.slice(name.lastIndexOf('.')).toLowerCase()
+const CORS = { 'Access-Control-Allow-Origin': '*' }
+
+function parseRangeHeader(header) {
+  const m = header && header.match(/bytes=(\d*)-(\d*)/)
+  if (!m || (!m[1] && !m[2])) return undefined
+  if (!m[1]) return { suffix: Number(m[2]) }
+  if (!m[2]) return { offset: Number(m[1]) }
+  return { offset: Number(m[1]), length: Number(m[2]) - Number(m[1]) + 1 }
+}
+
+async function cloudMediaHandler(request, env, url) {
+  if (!env.MEDIA) return new Response('R2 미설정', { status: 503, headers: CORS })
+  const key = decodeURIComponent(url.pathname.slice('/media-cloud/'.length))
+  if (!key || key.includes('..')) return new Response('bad key', { status: 400, headers: CORS })
+  const range = parseRangeHeader(request.headers.get('Range'))
+  const object = await env.MEDIA.get(key, range ? { range } : undefined)
+  if (!object) return new Response('not found', { status: 404, headers: CORS })
+
+  const headers = new Headers(CORS)
+  headers.set('Content-Type', MIME[extOf(key)] || 'application/octet-stream')
+  headers.set('Accept-Ranges', 'bytes')
+  headers.set('Cache-Control', 'public, max-age=3600')
+  if (range && object.range) {
+    const offset = object.range.offset ?? Math.max(0, object.size - (object.range.suffix ?? 0))
+    const length = object.range.length ?? object.size - offset
+    headers.set('Content-Range', `bytes ${offset}-${offset + length - 1}/${object.size}`)
+    headers.set('Content-Length', String(length))
+    return new Response(object.body, { status: 206, headers })
+  }
+  headers.set('Content-Length', String(object.size))
+  return new Response(object.body, { status: 200, headers })
+}
+
+async function cloudListHandler(env) {
+  if (!env.MEDIA) return Response.json({ audio: [], video: [], image: [] }, { headers: CORS })
+  const names = []
+  let cursor
+  do {
+    const page = await env.MEDIA.list({ limit: 1000, cursor })
+    names.push(...page.objects.map((o) => o.key))
+    cursor = page.truncated ? page.cursor : undefined
+  } while (cursor)
+  const pick = (exts) => names.filter((n) => exts.includes(extOf(n))).sort()
+  return Response.json(
+    { audio: pick(AUDIO_EXT), video: pick(VIDEO_EXT), image: pick(IMAGE_EXT) },
+    { headers: CORS },
+  )
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
     if (url.pathname === '/api/lyrics') return lyricsHandler(url)
     if (url.pathname === '/api/playlist-tracks') return playlistTracksHandler(url)
+    if (url.pathname === '/api/cloud-media') return cloudListHandler(env)
+    if (url.pathname.startsWith('/media-cloud/')) return cloudMediaHandler(request, env, url)
     return env.ASSETS.fetch(request)
   },
 }

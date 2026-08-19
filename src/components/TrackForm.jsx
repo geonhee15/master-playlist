@@ -1,7 +1,68 @@
 import { useState } from 'react'
 import { parseVideoId } from '../youtube.js'
+import { cloudFileUrl, cloudNameFromUrl } from '../library.js'
 
-export default function TrackForm({ initial, media, onRefresh, onOpenFolder, envMode, onSubmit, onCancel }) {
+// 파일 소스 선택값: '' | 'file:<이름>'(이 기기) | 'url:<주소>'(클라우드)
+const sourceValue = (file, url) => (file ? `file:${file}` : url ? `url:${url}` : '')
+
+function SourceSelect({ label, value, localFiles, cloudFiles, onChange }) {
+  const [file, url] = value
+  const selected = sourceValue(file, url)
+  const cloudValues = cloudFiles.map((n) => `url:${cloudFileUrl(n)}`)
+
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <select
+        className="input"
+        value={selected}
+        onChange={(e) => {
+          const v = e.target.value
+          if (v.startsWith('file:')) onChange([v.slice(5), ''])
+          else if (v.startsWith('url:')) onChange(['', v.slice(4)])
+          else onChange(['', ''])
+        }}
+      >
+        <option value="">없음</option>
+        {file && !localFiles.includes(file) && (
+          <option value={`file:${file}`}>{file} (폴더에 없음)</option>
+        )}
+        {url && !cloudValues.includes(`url:${url}`) && (
+          <option value={`url:${url}`}>{cloudNameFromUrl(url) || '외부 URL'}</option>
+        )}
+        {localFiles.length > 0 && (
+          <optgroup label="이 기기 (미디어 폴더)">
+            {localFiles.map((name) => (
+              <option key={name} value={`file:${name}`}>
+                {name}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {cloudFiles.length > 0 && (
+          <optgroup label="클라우드 (어느 기기서나 재생)">
+            {cloudFiles.map((name) => (
+              <option key={name} value={`url:${cloudFileUrl(name)}`}>
+                {name}
+              </option>
+            ))}
+          </optgroup>
+        )}
+      </select>
+    </label>
+  )
+}
+
+export default function TrackForm({
+  initial,
+  media,
+  cloudMedia = { audio: [], video: [], image: [] },
+  onRefresh,
+  onOpenFolder,
+  envMode,
+  onSubmit,
+  onCancel,
+}) {
   const [f, setF] = useState({
     title: initial?.title || '',
     originalArtist: initial?.originalArtist || '',
@@ -11,11 +72,15 @@ export default function TrackForm({ initial, media, onRefresh, onOpenFolder, env
     lyrics: initial?.lyrics || '',
     audioFile: initial?.audioFile || '',
     videoFile: initial?.videoFile || '',
+    audioUrl: initial?.audioUrl || '',
+    videoUrl: initial?.videoUrl || '',
     youtubeUrl: initial?.youtubeUrl || '',
   })
   const set = (key) => (e) => setF({ ...f, [key]: e.target.value })
   const youtubeOk = !f.youtubeUrl || !!parseVideoId(f.youtubeUrl)
-  const valid = f.title.trim() && (f.audioFile || f.videoFile || parseVideoId(f.youtubeUrl))
+  const valid =
+    f.title.trim() &&
+    (f.audioFile || f.videoFile || f.audioUrl || f.videoUrl || parseVideoId(f.youtubeUrl))
 
   return (
     <div className="card form-card">
@@ -57,34 +122,20 @@ export default function TrackForm({ initial, media, onRefresh, onOpenFolder, env
           <span>원본 제목</span>
           <input className="input" value={f.originalTitle} onChange={set('originalTitle')} placeholder="예: 밤편지" />
         </label>
-        <label className="field">
-          <span>오디오 파일</span>
-          <select className="input" value={f.audioFile} onChange={set('audioFile')}>
-            <option value="">없음</option>
-            {f.audioFile && !media.audio.includes(f.audioFile) && (
-              <option value={f.audioFile}>{f.audioFile} (폴더에 없음)</option>
-            )}
-            {media.audio.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          <span>영상 파일 (선택)</span>
-          <select className="input" value={f.videoFile} onChange={set('videoFile')}>
-            <option value="">없음</option>
-            {f.videoFile && !media.video.includes(f.videoFile) && (
-              <option value={f.videoFile}>{f.videoFile} (폴더에 없음)</option>
-            )}
-            {media.video.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SourceSelect
+          label="오디오 파일"
+          value={[f.audioFile, f.audioUrl]}
+          localFiles={media.audio}
+          cloudFiles={cloudMedia.audio}
+          onChange={([file, url]) => setF({ ...f, audioFile: file, audioUrl: url })}
+        />
+        <SourceSelect
+          label="영상 파일 (선택)"
+          value={[f.videoFile, f.videoUrl]}
+          localFiles={media.video}
+          cloudFiles={cloudMedia.video}
+          onChange={([file, url]) => setF({ ...f, videoFile: file, videoUrl: url })}
+        />
       </div>
 
       <label className="field">

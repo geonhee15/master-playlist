@@ -61,6 +61,18 @@ npm run dev
   (localStorage 저장, 파일 업로드 없음). 주인의 플리는 로컬 개발 서버에서만 보임
 - 가사는 프록시가 없어도 브라우저에서 LRCLIB로 직접 폴백
 
+## 클라우드 미디어 (Cloudflare R2)
+
+mp3/mp4를 R2에 올리면 **어느 기기서나** 커스텀 곡으로 재생할 수 있다 (10GB 무료, 전송량 무료):
+
+1. dash.cloudflare.com → **R2 Object Storage → Create bucket** → 이름은 정확히
+   **`master-playlist-media`** (위치 Asia-Pacific 권장) — 버킷이 있어야 Worker 배포가 성공한다
+2. 버킷 화면에서 **Upload**로 mp3/mp4 드래그&드롭
+3. 곡 추가 폼의 파일 드롭다운에 **"클라우드 (어느 기기서나 재생)"** 그룹으로 자동 표시
+4. Worker가 `/media-cloud/<파일명>`으로 Range 지원 스트리밍, `/api/cloud-media`로 목록 제공
+
+주의: 클라우드 파일은 URL을 아는 사람은 누구나 접근 가능 (사이트 로그인과 무관) — 개인 소장용으로만.
+
 ## 로그인 (Firebase Authentication)
 
 자체 로그인 화면(이메일/비번 + Google, 계정 상호 연동)은 Firebase Auth를 쓴다:

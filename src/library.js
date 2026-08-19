@@ -64,3 +64,48 @@ export function openMediaFolder() {
 
 export const mediaUrl = (file) =>
   visitorMediaResolver ? visitorMediaResolver(file) : `/media/${encodeURIComponent(file)}`
+
+// ---- 외부 URL 미디어 (구글 드라이브/드롭박스/직접 링크) ----
+// 공유 링크를 브라우저가 바로 재생할 수 있는 직접 링크로 변환
+export function normalizeMediaUrl(url) {
+  if (!url) return ''
+  const u = String(url).trim()
+  // 구글 드라이브: file/d/ID, open?id=ID, uc?id=ID 형태 모두 지원
+  const drive = u.match(
+    /drive\.google\.com\/(?:file\/d\/([\w-]+)|open\?id=([\w-]+)|uc\?(?:[^#]*&)?id=([\w-]+))/,
+  )
+  if (drive) {
+    const id = drive[1] || drive[2] || drive[3]
+    return `https://drive.usercontent.google.com/download?id=${id}&export=download`
+  }
+  // 드롭박스 공유 링크 → 직접 링크
+  if (/www\.dropbox\.com\//.test(u))
+    return u.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/([?&])dl=0/, '$1raw=1')
+  return u
+}
+
+// 곡의 재생 소스: 로컬 파일 우선, 없으면 외부 URL(클라우드 포함)
+export const trackHasAudio = (t) => !!(t?.audioFile || t?.audioUrl)
+export const trackHasVideo = (t) => !!(t?.videoFile || t?.videoUrl)
+export const trackAudioSrc = (t) =>
+  t?.audioFile ? mediaUrl(t.audioFile) : normalizeMediaUrl(t?.audioUrl)
+export const trackVideoSrc = (t) =>
+  t?.videoFile ? mediaUrl(t.videoFile) : normalizeMediaUrl(t?.videoUrl)
+
+// ---- 클라우드 미디어 (Cloudflare R2, Worker가 서빙) — 어느 기기서나 재생 ----
+const CLOUD_BASE = 'https://masterplaylist.net'
+export const cloudFileUrl = (name) => `${CLOUD_BASE}/media-cloud/${encodeURIComponent(name)}`
+export const cloudNameFromUrl = (url) => {
+  const m = String(url || '').match(/\/media-cloud\/([^?#]+)/)
+  return m ? decodeURIComponent(m[1]) : ''
+}
+
+export async function listCloudMedia() {
+  try {
+    const res = await fetch(`${CLOUD_BASE}/api/cloud-media`)
+    if (!res.ok) return { audio: [], video: [], image: [] }
+    return await res.json()
+  } catch {
+    return { audio: [], video: [], image: [] }
+  }
+}

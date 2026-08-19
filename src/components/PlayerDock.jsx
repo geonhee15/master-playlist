@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { trackHasAudio, trackHasVideo } from '../library.js'
 import {
   PlayIcon,
   PauseIcon,
@@ -168,7 +169,7 @@ export default function PlayerDock({
             <span>{fmt(duration)}</span>
           </div>
 
-          {track.audioFile && track.videoFile && (
+          {trackHasAudio(track) && trackHasVideo(track) && (
             <button className="btn small" onClick={onToggleMode}>
               {mode === 'audio' ? (
                 <>

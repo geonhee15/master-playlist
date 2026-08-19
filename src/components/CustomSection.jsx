@@ -12,6 +12,11 @@ import {
   setVisitorMediaResolver,
   loadVisitorLibrary,
   saveVisitorLibrary,
+  trackHasAudio,
+  trackHasVideo,
+  trackAudioSrc,
+  trackVideoSrc,
+  listCloudMedia,
 } from '../library.js'
 import {
   supportsFolderPick,
@@ -38,7 +43,7 @@ import { getVolume, onVolumeChange } from '../volume.js'
 
 // 파일이 없고 유튜브 링크만 있는 곡 → 유튜브 임베드로 재생
 const trackYouTubeId = (track) =>
-  track && !track.audioFile && !track.videoFile ? parseVideoId(track.youtubeUrl) : null
+  track && !trackHasAudio(track) && !trackHasVideo(track) ? parseVideoId(track.youtubeUrl) : null
 
 function PlaylistForm({ initial, media, onRefreshMedia, onOpenFolder, onSubmit, onCancel }) {
   const [name, setName] = useState(initial?.name || '')
@@ -124,6 +129,12 @@ export default function CustomSection() {
   const [selectedId, setSelectedId] = useState(null)
   const [editingPlaylist, setEditingPlaylist] = useState(null) // null | 'new' | playlist
   const [error, setError] = useState('')
+
+  // 클라우드(R2) 미디어 목록 — 어느 기기서나 재생 가능한 파일들
+  const [cloudMedia, setCloudMedia] = useState({ audio: [], video: [], image: [] })
+  useEffect(() => {
+    listCloudMedia().then(setCloudMedia)
+  }, [])
 
   // 환경 감지: 로컬 개발 서버(내 라이브러리+public/media)냐, 배포 사이트 방문(자기 폴더 선택)이냐
   const [envMode, setEnvMode] = useState('detecting') // 'detecting' | 'local' | 'visitor'
@@ -264,6 +275,8 @@ export default function CustomSection() {
             lyrics: t.lyrics || '',
             audioFile: t.audioFile || '',
             videoFile: t.videoFile || '',
+            audioUrl: t.audioUrl || '',
+            videoUrl: t.videoUrl || '',
             youtubeUrl: t.youtubeUrl || '',
           })),
       }
@@ -408,7 +421,7 @@ export default function CustomSection() {
       ytPlayerRef.current?.stopVideo?.()
       if (!v) return
       pendingSeek.current = seekTo
-      v.src = mediaUrl(m === 'video' ? track.videoFile : track.audioFile)
+      v.src = m === 'video' ? trackVideoSrc(track) : trackAudioSrc(track)
       if (autoplay) v.play().catch(() => {})
     }
   }
@@ -421,10 +434,10 @@ export default function CustomSection() {
     const m = ytId
       ? 'video'
       : mode === 'video'
-        ? track.videoFile
+        ? trackHasVideo(track)
           ? 'video'
           : 'audio'
-        : track.audioFile
+        : trackHasAudio(track)
           ? 'audio'
           : 'video'
     setQueue(q)
@@ -503,7 +516,7 @@ export default function CustomSection() {
   }
 
   const toggleMode = () => {
-    if (!currentTrack?.audioFile || !currentTrack?.videoFile) return
+    if (!trackHasAudio(currentTrack) || !trackHasVideo(currentTrack)) return
     const v = videoRef.current
     const target = mode === 'audio' ? 'video' : 'audio'
     const wasPlaying = v ? !v.paused : false
@@ -647,6 +660,7 @@ export default function CustomSection() {
         <CustomPlaylistDetail
           playlist={selected}
           media={media}
+          cloudMedia={cloudMedia}
           refreshMedia={refreshMedia}
           envMode={envMode}
           onOpenFolder={openFolder}

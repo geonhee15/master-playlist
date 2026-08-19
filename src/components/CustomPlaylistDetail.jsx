@@ -19,6 +19,7 @@ function exportPlaylist(playlist) {
 export default function CustomPlaylistDetail({
   playlist,
   media,
+  cloudMedia,
   refreshMedia,
   envMode,
   onOpenFolder,
@@ -121,6 +122,7 @@ export default function CustomPlaylistDetail({
         <TrackForm
           initial={trackForm === 'new' ? null : trackForm}
           media={media}
+          cloudMedia={cloudMedia}
           onRefresh={refreshMedia}
           onOpenFolder={onOpenFolder}
           envMode={envMode}
@@ -214,13 +216,13 @@ export default function CustomPlaylistDetail({
                   {t.description}
                 </span>
                 <span className="media-badges">
-                  {t.audioFile && (
-                    <span className="badge" title={t.audioFile}>
+                  {(t.audioFile || t.audioUrl) && (
+                    <span className="badge" title={t.audioFile || '클라우드/외부 파일'}>
                       ♪
                     </span>
                   )}
-                  {t.videoFile && (
-                    <span className="badge" title={t.videoFile}>
+                  {(t.videoFile || t.videoUrl) && (
+                    <span className="badge" title={t.videoFile || '클라우드/외부 파일'}>
                       <VideoIcon size={12} />
                     </span>
                   )}
