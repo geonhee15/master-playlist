@@ -73,6 +73,22 @@ npm run dev
 5. config가 채워지면 사이트에 로그인 게이트가 자동으로 켜진다.
    `?login-preview` 쿼리로 화면 디자인만 미리 볼 수 있다.
 6. 계정 연동: 설정(우상단 톱니) → 계정에서 **구글 연동** / **아이디·비번 연동** 양방향 지원
+7. **기기 간 설정 동기화(Firestore)**: 콘솔 → **Firestore Database → 데이터베이스 만들기**
+   (프로덕션 모드, 리전 아무거나) → **규칙** 탭에 아래 붙여넣고 게시:
+
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{uid} {
+         allow read, write: if request.auth != null && request.auth.uid == uid;
+       }
+     }
+   }
+   ```
+
+   동기화 대상: 닉네임, Spotify Client ID, YouTube API 키·추가한 플리 목록.
+   Spotify 재생 연결(토큰)은 기기마다 "연결하기" 한 번씩 필요 (토큰 회전 문제로 비동기화)
 
 (기존 Cloudflare Access 게이트를 쓰고 있었다면 Zero Trust에서 앱을 삭제해 이중 로그인을 피한다)
 

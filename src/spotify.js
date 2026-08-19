@@ -7,8 +7,13 @@ const SCOPES = 'playlist-read-private playlist-read-collaborative user-library-r
 export const redirectUri = () => `${window.location.origin}/callback`
 
 // ---- Client ID 저장 ----
+import { pushKey } from './sync.js'
+
 export const getClientId = () => localStorage.getItem('sp_client_id') || ''
-export const setClientId = (id) => localStorage.setItem('sp_client_id', id.trim())
+export const setClientId = (id) => {
+  localStorage.setItem('sp_client_id', id.trim())
+  pushKey('sp_client_id')
+}
 
 // ---- PKCE 유틸 ----
 function randomString(len = 64) {

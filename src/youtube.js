@@ -37,8 +37,13 @@ export function parsePlaylistId(url) {
 }
 
 // ---- YouTube Data API v3 (키는 localStorage) ----
+import { pushKey } from './sync.js'
+
 export const getApiKey = () => localStorage.getItem('yt_api_key') || ''
-export const setApiKey = (key) => localStorage.setItem('yt_api_key', key.trim())
+export const setApiKey = (key) => {
+  localStorage.setItem('yt_api_key', key.trim())
+  pushKey('yt_api_key')
+}
 
 const API_BASE = 'https://www.googleapis.com/youtube/v3'
 
@@ -89,4 +94,7 @@ export const getSavedPlaylistIds = () => {
     return []
   }
 }
-export const setSavedPlaylistIds = (ids) => localStorage.setItem('yt_playlists', JSON.stringify(ids))
+export const setSavedPlaylistIds = (ids) => {
+  localStorage.setItem('yt_playlists', JSON.stringify(ids))
+  pushKey('yt_playlists')
+}

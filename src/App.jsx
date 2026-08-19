@@ -15,6 +15,7 @@ import { getNowPlaying } from './nowPlaying.js'
 import { MenuIcon } from './components/Icons.jsx'
 import LoginScreen from './components/LoginScreen.jsx'
 import { authEnabled, watchUser } from './auth.js'
+import { initSync } from './sync.js'
 
 export default function App() {
   const [section, setSection] = useState('spotify')
@@ -23,6 +24,9 @@ export default function App() {
   const loginPreview = window.location.search.includes('login-preview')
 
   useEffect(() => watchUser(setUser), [])
+  useEffect(() => {
+    initSync() // 로그인 계정으로 설정 동기화 (Firestore)
+  }, [])
   const [booting, setBooting] = useState(window.location.pathname === '/callback')
   const [authError, setAuthError] = useState('')
 

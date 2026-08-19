@@ -14,12 +14,18 @@ import {
 } from 'firebase/auth'
 import { firebaseConfig, hasAuthConfig } from './firebaseConfig.js'
 
+let app = null
 let auth = null
 
 export const authEnabled = () => hasAuthConfig()
 
+export function getFirebaseApp() {
+  if (!app && hasAuthConfig()) app = initializeApp(firebaseConfig)
+  return app
+}
+
 function getAuthInstance() {
-  if (!auth && hasAuthConfig()) auth = getAuth(initializeApp(firebaseConfig))
+  if (!auth && hasAuthConfig()) auth = getAuth(getFirebaseApp())
   return auth
 }
 
