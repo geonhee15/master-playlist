@@ -8,12 +8,12 @@ const SpotifyIcon = () => (
   </svg>
 )
 
-export default function Sidebar({ section, onSelect }) {
+export default function Sidebar({ section, onSelect, open }) {
   const [nickname, setNicknameState] = useState(getNickname())
   useEffect(() => onNicknameChange(setNicknameState), [])
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div className="brand">
         <span className="brand-mark">♪</span>
         <div>

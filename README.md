@@ -61,16 +61,20 @@ npm run dev
   (localStorage 저장, 파일 업로드 없음). 주인의 플리는 로컬 개발 서버에서만 보임
 - 가사는 프록시가 없어도 브라우저에서 LRCLIB로 직접 폴백
 
-## 구글 로그인 (Cloudflare Access)
+## 로그인 (Firebase Authentication)
 
-사이트 전체에 구글 로그인 게이트를 씌우려면 코드 없이 Cloudflare Access를 쓴다:
+자체 로그인 화면(이메일/비번 + Google, 계정 상호 연동)은 Firebase Auth를 쓴다:
 
-1. dash.cloudflare.com → **Zero Trust** (무료 플랜, 팀 이름 아무거나)
-2. **Settings → Authentication → Login methods → Add new → Google** (안내대로 구글 OAuth 클라이언트 생성)
-3. **Access → Applications → Add an application → Self-hosted** →
-   도메인 `masterplaylist.net` 입력
-4. 정책(Policy): Allow → Include → **Emails** → 본인 지메일 입력 (친구를 추가하고 싶으면 이메일 추가)
-5. 저장하면 사이트 접속 시 구글 로그인 화면이 먼저 뜨고, 허용된 계정만 들어올 수 있다
+1. [console.firebase.google.com](https://console.firebase.google.com) → 프로젝트 추가
+2. **Authentication → 시작하기 → Sign-in method**에서 **이메일/비밀번호**와 **Google** 사용 설정
+3. **Authentication → Settings → 승인된 도메인**에 `masterplaylist.net` 추가
+4. 프로젝트 설정(⚙) → 일반 → 내 앱 → 웹 앱(</>) 등록 → `firebaseConfig` 값을
+   `src/firebaseConfig.js`에 붙여넣고 커밋 (apiKey는 공개용 클라이언트 식별자)
+5. config가 채워지면 사이트에 로그인 게이트가 자동으로 켜진다.
+   `?login-preview` 쿼리로 화면 디자인만 미리 볼 수 있다.
+6. 계정 연동: 설정(우상단 톱니) → 계정에서 **구글 연동** / **아이디·비번 연동** 양방향 지원
+
+(기존 Cloudflare Access 게이트를 쓰고 있었다면 Zero Trust에서 앱을 삭제해 이중 로그인을 피한다)
 
 ## UI 규칙
 

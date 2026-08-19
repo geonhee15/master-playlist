@@ -71,6 +71,12 @@ export const FullscreenIcon = ({ size }) => (
   </Icon>
 )
 
+export const MenuIcon = ({ size }) => (
+  <StrokeIcon size={size}>
+    <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
+  </StrokeIcon>
+)
+
 export const SearchIcon = ({ size }) => (
   <StrokeIcon size={size}>
     <circle cx="7" cy="7" r="4.5" />

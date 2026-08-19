@@ -12,9 +12,17 @@ import DashboardSection from './components/DashboardSection.jsx'
 import { exchangeCode } from './spotify.js'
 import { recordSectionVisit } from './stats.js'
 import { getNowPlaying } from './nowPlaying.js'
+import { MenuIcon } from './components/Icons.jsx'
+import LoginScreen from './components/LoginScreen.jsx'
+import { authEnabled, watchUser } from './auth.js'
 
 export default function App() {
   const [section, setSection] = useState('spotify')
+  const [navOpen, setNavOpen] = useState(false) // 모바일 사이드바 드로어
+  const [user, setUser] = useState(undefined) // undefined = 인증 상태 확인 중
+  const loginPreview = window.location.search.includes('login-preview')
+
+  useEffect(() => watchUser(setUser), [])
   const [booting, setBooting] = useState(window.location.pathname === '/callback')
   const [authError, setAuthError] = useState('')
 
@@ -83,9 +91,32 @@ export default function App() {
     )
   }
 
+  // 로그인 게이트 (Firebase 설정이 있을 때만; ?login-preview 로 디자인 미리보기 가능)
+  if (authEnabled() || loginPreview) {
+    if (user === undefined && !loginPreview) {
+      return (
+        <div className="boot-screen">
+          <div className="spinner" />
+        </div>
+      )
+    }
+    if (!user) return <LoginScreen preview={loginPreview && !authEnabled()} />
+  }
+
   return (
     <div className="app">
-      <Sidebar section={section} onSelect={setSection} />
+      <button className="mobile-nav-btn" onClick={() => setNavOpen(true)} title="메뉴">
+        <MenuIcon size={16} />
+      </button>
+      {navOpen && <div className="nav-backdrop" onClick={() => setNavOpen(false)} />}
+      <Sidebar
+        section={section}
+        open={navOpen}
+        onSelect={(s) => {
+          setSection(s)
+          setNavOpen(false)
+        }}
+      />
       {/* 섹션을 전환해도 재생이 끊기지 않도록 언마운트 대신 숨김 처리 */}
       <main className="main">
         <div style={{ display: section === 'spotify' ? 'block' : 'none' }}>
